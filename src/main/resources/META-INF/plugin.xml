@@ -8,26 +8,41 @@
     <!-- Public plugin name should be written in Title Case.
          Guidelines: https://plugins.jetbrains.com/docs/marketplace/plugin-overview-page.html#plugin-name -->
     <!-- A displayed Vendor name or Organization ID displayed on the Plugins Page. -->
-    <vendor email="l1401098954@gmail.com" url="https://www.yourcompany.com">yapi</vendor>
+    <vendor email="l1401098954@gmail.com" url="https://github.com/LiuGuanXin/YapiGenerate">yapi</vendor>
+    <name>Yapi Generate</name>
 
     <!-- Description of the plugin displayed on the Plugin Page and IDE Plugin Manager.
          Simple HTML elements (text formatting, paragraphs, and lists) can be added inside of <![CDATA[ ]]> tag.
          Guidelines: https://plugins.jetbrains.com/docs/marketplace/plugin-overview-page.html#plugin-description -->
     <description><![CDATA[
-    这是一个针对Yapi接口输出填写的插件，他可以根据实体类自动生成对应的Yapi接口的Json形式，在所需的model类中点击右键即可生成。<br>
+    This plugin helps developers automatically generate Yapi-compatible JSON structures and documentation based on Java entity classes in IntelliJ IDEA.<br><br>
+
+    该插件用于在 IntelliJ IDEA 中根据 Java 实体类自动生成 Yapi 接口定义的 JSON 数据与文档，提升接口编写效率。<br><br>
+
     <em>
-        使用方式一
-        在Controller类的接口方法上，有两个按钮，生成文档，可以生成当前接口的Yapi文档。生成文档(Mock)可以同时生成Mock数据的文档。
-        使用方式二
-        点击右键，找到Yapi返回结果生成，选择对应的类型即可自动生成Yapi接口的json形式。
-        1.支持生成对象返回结果，生成结果可选择是否生成mock数据。
-        2.支持生成列表返回结果，生成结果可选择是否生成mock数据。
-        3.支持生成请求体对象json，生成结果可选择是否生成mock数据。
-        生成mock数据需要大模型的支持，需要在设置中配置apikey。
-        配置路径为：
-        Settings -> Tools -> Yapi_ApiKey
+    <b>Usage Method 1 / 使用方式一：</b><br>
+    在 Controller 方法上方会出现两个按钮：
+    <ul>
+    <li><b>Generate Document：</b>生成当前接口的 Yapi 文档。</li>
+    <li><b>Generate Document (Mock)：</b>生成接口文档并附带 Mock 数据。</li>
+    </ul>
+
+    <b>Usage Method 2 / 使用方式二：</b><br>
+    在实体类中右键，选择 “Yapi 返回结果生成” 菜单，可自动生成对应的 Yapi JSON 数据结构。<br><br>
+
+    <b>Features / 功能特性：</b>
+    <ol>
+    <li>支持生成对象返回结果，可选择是否包含 Mock 数据。</li>
+    <li>支持生成列表返回结果，可选择是否包含 Mock 数据。</li>
+    <li>支持生成请求体对象 JSON，可选择是否包含 Mock 数据。</li>
+    </ol>
+
+    <b>Note / 注意：</b><br>
+    Mock 数据的生成依赖大语言模型（LLM）支持，请在设置中配置 API Key。<br>
+    配置路径：<b>Settings -> Tools -> Yapi_ApiKey</b>
     </em>
-  ]]></description>
+    ]]></description>
+
 
     <!-- Product and plugin compatibility requirements.
          Read more: https://plugins.jetbrains.com/docs/intellij/plugin-compatibility.html -->

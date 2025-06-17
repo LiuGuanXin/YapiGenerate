@@ -29,6 +29,8 @@ intellij {
 
 
 dependencies {
+
+    implementation("cn.hutool:hutool-all:5.1.0")
     implementation("com.alibaba:dashscope-sdk-java:2.20.3")
     implementation("org.commonmark:commonmark:0.19.0")
     implementation("com.alibaba:fastjson:1.2.55")

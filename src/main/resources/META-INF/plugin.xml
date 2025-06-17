@@ -62,9 +62,11 @@
                                  id="ApiKey.Config"
                                  displayName="Yapi_ApiKey"/>
 
-        <codeInsight.codeVisionProvider implementation="com.plugin.demo.codeinsight.YapiProvider"/>
+        <codeInsight.codeVisionProvider id="YapiProvider" implementation="com.plugin.demo.codeinsight.YapiProvider"/>
 
-        <codeInsight.codeVisionProvider implementation="com.plugin.demo.codeinsight.YapiMockProvider"/>
+        <codeInsight.codeVisionProvider id="YapiMockProvider" implementation="com.plugin.demo.codeinsight.YapiMockProvider"/>
+
+        <codeInsight.codeVisionProvider implementation="com.plugin.demo.codeinsight.YapiSendProvider"/>
 
     </extensions>
 

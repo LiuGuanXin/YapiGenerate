@@ -25,7 +25,18 @@ public final class CodeChronoSettings implements PersistentStateComponent<CodeCh
         public String aLiModelName = "qwen-max";
         public String zhiPuModelName = "glm-4-plus";
         public Integer type = 0;
-
+//        public String userName;
+//        public String password;
+//        public String groupName;
+//        public String projectName;
+//        public String categoryName;
+//        public String url;
+        public String userName = "1401098954@qq.com";
+        public String password = "lgx11111";
+        public String groupName = "1111";
+        public String projectName = "55555";
+        public String categoryName = "公共分类";
+        public String url = "http://192.168.99.206:3000";
     }
 
     private State myState = new State();

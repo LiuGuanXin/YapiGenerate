@@ -72,13 +72,29 @@ class MyClickHandler implements Function2<MouseEvent, Editor, Unit> {
         PsiParameter[] parameter = psiMethod.getParameterList().getParameters();
         List<FieldInfo> fieldInfos;
         String body = "";
-        if (parameter.length == 1) {
-            PsiType fieldType = parameter[0].getType();
-            if (ClassParse.isCustomType(fieldType)) {
-                PsiClassType classType = (PsiClassType) fieldType;
-                PsiClass psiClassType = classType.resolve();
-                fieldInfos = ClassParse.parseFieldsWithComments(psiClassType);
-                body = ClassParse.getRequestBody(fieldInfos, mock);
+        // 请求体的请求
+        if (!isGetMapping(psiMethod)) {
+            for (PsiParameter psiParameter: parameter) {
+                if (ClassParse.isCustomType(psiParameter.getType())) {
+                    PsiType fieldType = psiParameter.getType();
+                    PsiClassType classType = (PsiClassType) fieldType;
+                    PsiClass psiClassType = classType.resolve();
+                    if (CommonClassNames.JAVA_UTIL_LIST.equals(psiClassType.getQualifiedName())) {
+                        PsiType[] parameters = classType.getParameters();
+                        if (parameters.length == 1 && parameters[0] instanceof PsiClassType) {
+                            PsiClass elementClass = ((PsiClassType) parameters[0]).resolve();
+                            if (elementClass != null) {
+                                fieldInfos = ClassParse.parseFieldsWithComments(elementClass);
+                                body = ClassParse.getRequestBody(fieldInfos, true, mock);
+
+                            }
+                        }
+                    } else if (ClassParse.isCustomType(fieldType))  {
+                        fieldInfos = ClassParse.parseFieldsWithComments(psiClassType);
+                        body = ClassParse.getRequestBody(fieldInfos, false, mock);
+                    }
+                    break;
+                }
             }
         }
         // 打印请求体的json
@@ -120,14 +136,14 @@ class MyClickHandler implements Function2<MouseEvent, Editor, Unit> {
                                     resultResult = ClassParse.getJsonResult(subFieldInfos, "List", mock);
 								}
 							}
-						} else if (resolved.getQualifiedName().endsWith(".PageDTO")) {
+						} else if (resolved != null && resolved.getQualifiedName().endsWith(".PageDTO")) {
                             PsiType[] parameters = actualClassType.getParameters();
                             PsiClass elementClass = ((PsiClassType) parameters[0]).resolve();
                             if (elementClass != null) {
                                 subFieldInfos = ClassParse.parseFieldsWithComments(elementClass);
                                 resultResult = ClassParse.getJsonResult(subFieldInfos, "Page", mock);
                             }
-                        } else if (resolved.getQualifiedName().endsWith("Void")) {
+                        } else if (resolved != null && resolved.getQualifiedName().endsWith("Void")) {
                             // 非 List 的直接类型
                             resultResult = ClassParse.getJsonResult(new ArrayList<>(), "Object", mock);
                         } else if (resolved != null) {
@@ -143,5 +159,16 @@ class MyClickHandler implements Function2<MouseEvent, Editor, Unit> {
             }
         }
         return result;
+    }
+
+    private boolean isGetMapping(PsiMethod method) {
+        // 检查方法注解
+        for (PsiAnnotation annotation : method.getAnnotations()) {
+            String qualifiedName = annotation.getQualifiedName();
+            if (qualifiedName != null && qualifiedName.contains("GetMapping")) {
+                return true;
+            }
+        }
+        return false;
     }
 }

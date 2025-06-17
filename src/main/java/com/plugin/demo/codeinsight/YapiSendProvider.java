@@ -28,11 +28,11 @@ import java.util.Objects;
  * @author Liu Guangxin
  * @date 2025/6/12 16:40
  */
-public class YapiMockProvider implements CodeVisionProvider<Unit> {
+public class YapiSendProvider implements CodeVisionProvider<Unit> {
 
     public static final String GROUP_ID = "com.demo";
-    public static final String ID = "generateYapiMock";
-    public static final String NAME = "文档生成(同时生成Mock数据)";
+    public static final String ID = "generateYapiSend";
+    public static final String NAME = "在Yapi上创建接口";
 
     private static final Key<Long> MODIFICATION_STAMP_KEY = Key.create("myPlugin.modificationStamp");
     private static final Key<Integer> MODIFICATION_STAMP_COUNT_KEY = KeyWithDefaultValue.create("myPlugin.modificationStampCount", 0);
@@ -66,11 +66,8 @@ public class YapiMockProvider implements CodeVisionProvider<Unit> {
     @NotNull
     @Override
     public List<CodeVisionRelativeOrdering> getRelativeOrderings() {
-        return List.of(new CodeVisionRelativeOrdering.CodeVisionRelativeOrderingAfter("YapiProvider"),
-                new CodeVisionRelativeOrdering.CodeVisionRelativeOrderingBefore("YapiSendProvider"));
+        return List.of(CodeVisionRelativeOrdering.CodeVisionRelativeOrderingLast.INSTANCE);
     }
-
-
 
     @Nullable
     @Override
@@ -85,7 +82,7 @@ public class YapiMockProvider implements CodeVisionProvider<Unit> {
         List<Pair<TextRange, CodeVisionEntry>> lenses = new ArrayList<>();
         for (PsiMethod psiMethod : psiMethods) {
             TextRange range = InlayHintsUtils.INSTANCE.getTextRangeWithoutLeadingCommentsAndWhitespaces(psiMethod);
-            MyClickHandler handler = new MyClickHandler(psiMethod, true);
+            SendYapiClickHandler handler = new SendYapiClickHandler(psiMethod, false);
             CodeVisionEntry entry = new ClickableTextCodeVisionEntry(getName(), getId(), handler, null, getName(), getName(), List.of());
             lenses.add(new Pair<>(range, entry));
         }

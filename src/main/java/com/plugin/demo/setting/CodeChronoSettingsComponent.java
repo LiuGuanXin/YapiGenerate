@@ -21,6 +21,13 @@ public class CodeChronoSettingsComponent {
     private final JRadioButton aLiButton = new JRadioButton("阿里");
     private final JBTextField zhipuModelNameText = new JBTextField();
     private final JBTextField aLiModelNameText = new JBTextField();
+    private final JBTextField userName = new JBTextField();
+    private final JBTextField password = new JBTextField();
+    private final JBTextField groupName = new JBTextField();
+    private final JBTextField projectName = new JBTextField();
+    private final JBTextField categoryName = new JBTextField();
+    private final JBTextField url = new JBTextField();
+
     private final ButtonGroup group = new ButtonGroup();
 
 
@@ -47,6 +54,14 @@ public class CodeChronoSettingsComponent {
         aLiAkiKeyText.setText(state.aLiApiKey);
         zhipuModelNameText.setText(state.zhiPuModelName);
         aLiModelNameText.setText(state.aLiModelName);
+
+        url.setText(state.url);
+        userName.setText(state.userName);
+        password.setText(state.password);
+        groupName.setText(state.groupName);
+        projectName.setText(state.projectName);
+        categoryName.setText(state.categoryName);
+
         if (state.type == 0) {
             group.setSelected(zhipuButton.getModel(), true);
         } else {
@@ -61,6 +76,12 @@ public class CodeChronoSettingsComponent {
         state.zhiPuModelName = zhipuModelNameText.getText();
         state.aLiModelName = aLiModelNameText.getText();
         state.type = zhipuButton.isSelected() && !aLiButton.isSelected() ? 0 : 1;
+        state.url = url.getText();
+        state.userName = userName.getText();
+        state.password = password.getText();
+        state.groupName = groupName.getText();
+        state.projectName = projectName.getText();
+        state.categoryName = categoryName.getText();
         CodeChronoSettings.getInstance().loadState(state);
 
     }
@@ -76,7 +97,20 @@ public class CodeChronoSettingsComponent {
                 && aLiAkiKeyText.getText().equals(state.aLiApiKey)
                 && zhipuModelNameText.getText().equals(state.zhiPuModelName)
                 && aLiModelNameText.getText().equals(state.aLiModelName)
-                &&(zhipuButton.isSelected())
+                &&(zhipuButton.isSelected()
+//                && (Objects.equals(url.getText(), state.url))
+//                && (Objects.equals(userName.getText(), state.userName))
+//                && (Objects.equals(password.getText(), state.password))
+//                && (Objects.equals(groupName.getText(), state.groupName))
+//                && (Objects.equals(projectName.getText(), state.projectName))
+//                && (Objects.equals(categoryName.getText(), state.categoryName))
+                && (Objects.equals(url.getText(), ""))
+                && (Objects.equals(userName.getText(), ""))
+                && (Objects.equals(password.getText(), ""))
+                && (Objects.equals(groupName.getText(), ""))
+                && (Objects.equals(projectName.getText(), ""))
+                && (Objects.equals(categoryName.getText(), ""))
+        )
         ) {
             return true;
         }
@@ -91,6 +125,12 @@ public class CodeChronoSettingsComponent {
         aLiAkiKeyText.setToolTipText("请输入阿里云的apikey");
         zhipuModelNameText.setToolTipText("请输入智谱的模型名称");
         aLiModelNameText.setToolTipText("请输入阿里云的模型名称");
+        url.setToolTipText("请输入Yapi地址");
+        userName.setToolTipText("请输入Yapi用户名");
+        password.setToolTipText("请输入Yapi密码");
+        groupName.setToolTipText("请输入项目组名称");
+        projectName.setToolTipText("请输入项目名称");
+        categoryName.setToolTipText("请输入类别名称");
         group.add(zhipuButton);
         group.add(aLiButton);
         group.setSelected(zhipuButton.getModel(), true);
@@ -104,6 +144,12 @@ public class CodeChronoSettingsComponent {
                 .addLabeledComponent(new JBLabel("智谱模型名称："), zhipuModelNameText, 1, false)
                 .addLabeledComponent(new JBLabel("阿里apikey："), aLiAkiKeyText, 1, false)
                 .addLabeledComponent(new JBLabel("阿里模型名称："), aLiModelNameText, 1, false)
+                .addLabeledComponent(new JBLabel("Yapi地址："), url, 1, false)
+                .addLabeledComponent(new JBLabel("Yapi用户名："), userName, 1, false)
+                .addLabeledComponent(new JBLabel("Yapi密码："), password, 1, false)
+                .addLabeledComponent(new JBLabel("项目组名称："), groupName, 1, false)
+                .addLabeledComponent(new JBLabel("项目名称："), projectName, 1, false)
+                .addLabeledComponent(new JBLabel("类别名称："), categoryName, 1, false)
                 .addComponentFillVertically(new JPanel(), 0)
                 .getPanel();
     }
@@ -118,7 +164,7 @@ public class CodeChronoSettingsComponent {
 
 
     /**
-     * 自定义天数按钮事件处理
+     *
      */
     private void modelChangeAction() {
         if (zhipuButton.isSelected()) {

@@ -191,9 +191,9 @@ public class ClassParse {
     }
 
 
-    public static String getRequestBody(List<FieldInfo> fieldInfos, Boolean getMockData) {
+    public static String getRequestBody(List<FieldInfo> fieldInfos, Boolean isList, Boolean getMockData) {
         JSONObject jsonObject = transToJson(fieldInfos);
-        Map<String, JSONObject> map = dealPrefix(jsonObject, false, getMockData);
+        Map<String, JSONObject> map = dealPrefix(jsonObject, isList, getMockData);
         if (map.get("exception") != null) {
             return map.get("exception").getString("exception");
         }
@@ -205,6 +205,19 @@ public class ClassParse {
                 "```json\n" +
                 JSON.toJSONString(result, SerializerFeature.PrettyFormat) +
                 "\n```\n";
+    }
+
+    public static String getRequestBodyMeta(List<FieldInfo> fieldInfos, Boolean isList, Boolean getMockData) {
+        JSONObject jsonObject = transToJson(fieldInfos);
+        Map<String, JSONObject> map = dealPrefix(jsonObject, isList, getMockData);
+        if (map.get("exception") != null) {
+            return map.get("exception").getString("exception");
+        }
+        JSONObject schema = map.get("schema");
+        JSONObject result = schema.getJSONObject("properties")
+                .getJSONObject("data");
+        result.put("description", "根节点");
+        return JSON.toJSONString(result, SerializerFeature.PrettyFormat);
     }
 
     /**
@@ -261,6 +274,15 @@ public class ClassParse {
                 "```json\n" +
                 JSON.toJSONString(map.get("schema"), SerializerFeature.PrettyFormat) +
                 "\n```\n";
+    }
+
+    public static String getJsonResultMeta(List<FieldInfo> fieldInfos, String type, Boolean getMockData) {
+        JSONObject jsonObject = transToJson(fieldInfos);
+        Map<String, JSONObject> map = dealPrefix(jsonObject, type, getMockData);
+        if (map.get("exception") != null) {
+            return map.get("exception").getString("exception");
+        }
+        return JSON.toJSONString(map.get("schema"), SerializerFeature.PrettyFormat);
     }
 
 
@@ -599,7 +621,7 @@ public class ClassParse {
      * @param field 字段对象
      * @return 注释文本，如果没有则返回空字符串
      */
-    private static String getCommentText(PsiField field) {
+    public static String getCommentText(PsiField field) {
         // 3. 获取 JavaDoc 注释（结构化文档）
         PsiDocComment docComment = field.getDocComment();
         String javaDocText = (docComment != null) ?
@@ -618,6 +640,24 @@ public class ClassParse {
             return javaDocText;
         } else if (!inlineComments.isEmpty()) {
             return inlineComments.stream().map(PsiComment::getText).collect(Collectors.joining("  | "));
+        }
+        return "";
+    }
+
+    /**
+     * 获取方法注释文本
+     * @param psiMethod 方法对象
+     * @return 注释文本，如果没有则返回空字符串
+     */
+    public static String getCommentText(PsiMethod psiMethod) {
+        // 3. 获取 JavaDoc 注释（结构化文档）
+        PsiDocComment docComment = psiMethod.getDocComment();
+        String javaDocText = (docComment != null) ?
+                docComment.getText().replace("/**", "").replace("*/", "").replace("*", "").trim() : "";
+        javaDocText = javaDocText.replace(" ", "").replace("\n", "");
+        if (!javaDocText.isEmpty()) {
+            javaDocText = javaDocText.substring(0, javaDocText.indexOf('@'));
+            return javaDocText;
         }
         return "";
     }

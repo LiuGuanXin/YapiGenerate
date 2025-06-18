@@ -5,6 +5,7 @@ import com.alibaba.fastjson.JSONArray;
 import com.alibaba.fastjson.JSONObject;
 import com.intellij.openapi.editor.Editor;
 import com.intellij.openapi.project.Project;
+import com.intellij.openapi.ui.popup.JBPopupFactory;
 import com.intellij.openapi.wm.ToolWindow;
 import com.intellij.openapi.wm.ToolWindowManager;
 import com.intellij.psi.*;
@@ -39,16 +40,15 @@ class SendYapiClickHandler implements Function2<MouseEvent, Editor, Unit> {
         // 创建接口
         // 获取到方法上的备注
 		String methodDoc = ClassParse.getCommentText(psiMethod);
-		System.out.println(methodDoc);
 		// 获取到请求路径
 		Map<String, String> map = getUrlPath(psiMethod);
-		System.out.println(map.get("method"));
-		System.out.println(map.get("path"));
 		Map<String, String> resultMap = YapiInterface.createInterface(map.get("method"), methodDoc, map.get("path"));
 		if ("fail".equals(resultMap.get("status"))) {
 			if ("40022".equals(resultMap.get("errorCode"))) {
+				// 当前接口路径  需要获取 组名称、项目名称、分类名称
 				// 需要弹窗提示接口已存在是否覆盖
-				boolean flag = new SampleDialogWrapper().showAndGet();
+				String interfacePath = YapiInterface.getInterfacePath(resultMap.get("id"));
+				boolean flag = new SampleDialogWrapper(interfacePath).showAndGet();
 				if (flag) {
 					// 更新数据
 					update(resultMap, map, methodDoc);
@@ -83,6 +83,8 @@ class SendYapiClickHandler implements Function2<MouseEvent, Editor, Unit> {
 				(String) paramsMap.get("return"),
 				(JSONArray) paramsMap.get("params"),
 				methodDoc);
+		new FinishDialogWrapper().showAndGet();
+//		JBPopupFactory.getInstance().createConfirmation("完成", null, 1).showInFocusCenter();
 	}
 
     private Map<String, Object> getParams(PsiMethod psiMethod) {
@@ -141,34 +143,30 @@ class SendYapiClickHandler implements Function2<MouseEvent, Editor, Unit> {
 				JSONObject jsonObject = new JSONObject();
 				jsonObject.put("name", "current");
 				jsonObject.put("required", "1");
-				jsonObject.put("example", "");
-				jsonObject.put("desc", "");
+				jsonObject.put("example", "1");
+				jsonObject.put("desc", "当前页");
 				jsonArray.add(jsonObject);
 				JSONObject jsonObject1 = new JSONObject();
 				jsonObject1.put("name", "size");
 				jsonObject1.put("required", "1");
-				jsonObject1.put("example", "");
-				jsonObject1.put("desc", "");
+				jsonObject1.put("example", "10");
+				jsonObject1.put("desc", "每页数量");
 				jsonArray.add(jsonObject1);
 			} else if (ClassParse.isCustomType(psiParameter.getType())) {
 				// 3. 如果是自定义对象类型， 解析后添加
 				// 1. 遍历类的所有字段
 				PsiClassType  psiClassType = (PsiClassType) psiParameter.getType();
 				PsiClass psiClass = psiClassType.resolve();
-				for (PsiField field : psiClass.getFields()) {
-					// 获取字段名称
-					String fieldName = field.getName();
-					// 排除序列化属性
-					if ("serialVersionUID".equals(fieldName)) {
-						continue;
-					}
-					// 不处理对象类型
-					if (!ClassParse.isCustomType(field.getType())) {
+				List<FieldInfo> fieldInfos = ClassParse.parseFieldsWithComments(psiClass);
+				for (FieldInfo fieldInfo : fieldInfos) {
+					// 不处理对象类型和列表类型
+					if (!"object".equals(fieldInfo.getType())
+							&& !"array".equals(fieldInfo.getType())) {
 						JSONObject jsonObject = new JSONObject();
-						jsonObject.put("name", fieldName);
+						jsonObject.put("name", fieldInfo.getName());
 						jsonObject.put("required", "1");
 						jsonObject.put("example", "");
-						jsonObject.put("desc", "");
+						jsonObject.put("desc", fieldInfo.getDescription());
 						jsonArray.add(jsonObject);
 					}
 				}

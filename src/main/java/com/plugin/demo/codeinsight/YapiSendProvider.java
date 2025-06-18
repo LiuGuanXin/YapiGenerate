@@ -69,11 +69,6 @@ public class YapiSendProvider implements CodeVisionProvider<Unit> {
         return List.of(CodeVisionRelativeOrdering.CodeVisionRelativeOrderingLast.INSTANCE);
     }
 
-    @Nullable
-    @Override
-    public CodeVisionPlaceholderCollector getPlaceholderCollector(@NotNull Editor editor, @Nullable PsiFile psiFile) {
-        return null;
-    }
 
     @NotNull
     @Override

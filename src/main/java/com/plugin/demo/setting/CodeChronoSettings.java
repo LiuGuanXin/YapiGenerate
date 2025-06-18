@@ -31,10 +31,10 @@ public final class CodeChronoSettings implements PersistentStateComponent<CodeCh
 //        public String projectName;
 //        public String categoryName;
 //        public String url;
-        public String userName = "1401098954@qq.com";
-        public String password = "lgx11111";
-        public String groupName = "1111";
-        public String projectName = "55555";
+        public String userName = "xxxxx@qq.com";
+        public String password = "xxxxx";
+        public String groupName = "仪表平台项目组";
+        public String projectName = "数典知识库";
         public String categoryName = "公共分类";
         public String url = "http://192.168.99.206:3000";
     }

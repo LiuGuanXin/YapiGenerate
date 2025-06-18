@@ -653,13 +653,16 @@ public class ClassParse {
         // 3. 获取 JavaDoc 注释（结构化文档）
         PsiDocComment docComment = psiMethod.getDocComment();
         String javaDocText = (docComment != null) ?
-                docComment.getText().replace("/**", "").replace("*/", "").replace("*", "").trim() : "";
+                docComment.getText().replace("/**", "")
+                        .replace("*/", "").replace("*", "").trim() : "";
         javaDocText = javaDocText.replace(" ", "").replace("\n", "");
         if (!javaDocText.isEmpty()) {
-            javaDocText = javaDocText.substring(0, javaDocText.indexOf('@'));
+            if (javaDocText.contains("@")) {
+                javaDocText = javaDocText.substring(0, javaDocText.indexOf('@'));
+            }
             return javaDocText;
         }
-        return "";
+        return "默认的接口名称";
     }
 
     /**

@@ -2,8 +2,12 @@
 <idea-plugin>
     <!-- Unique identifier of the plugin. It should be FQN. It cannot be changed between the plugin versions. -->
     <id>YapiResultGenerate</id>
-    <version>1.0</version>
+    <version>1.1</version>
     <depends>com.intellij.modules.java</depends>
+    <!-- Product and plugin compatibility requirements.
+     Read more: https://plugins.jetbrains.com/docs/intellij/plugin-compatibility.html -->
+    <depends>com.intellij.modules.platform</depends>
+
     <idea-version since-build="2024.1.7" />
     <!-- Public plugin name should be written in Title Case.
          Guidelines: https://plugins.jetbrains.com/docs/marketplace/plugin-overview-page.html#plugin-name -->
@@ -21,10 +25,11 @@
 
     <em>
     <b>Usage Method 1 / 使用方式一：</b><br>
-    在 Controller 方法上方会出现两个按钮：
+    在 Controller 方法上方会出现三个按钮：
     <ul>
-    <li><b>Generate Document：</b>生成当前接口的 Yapi 文档。</li>
-    <li><b>Generate Document (Mock)：</b>生成接口文档并附带 Mock 数据。</li>
+    <li><b>文档生成</b>生成当前接口的 Yapi 文档（侧边栏窗口展示）。</li>
+    <li><b>文档生成 (同时生成mock数据)：</b>生成接口文档并附带 Mock 数据（侧边栏窗口展示）。</li>
+    <li><b>在Yapi上创建接口：</b>在Settings -> Tools -> yapi_setting配置Yapi信息后直接创建接口。</li>
     </ul>
 
     <b>Usage Method 2 / 使用方式二：</b><br>
@@ -39,14 +44,11 @@
 
     <b>Note / 注意：</b><br>
     Mock 数据的生成依赖大语言模型（LLM）支持，请在设置中配置 API Key。<br>
-    配置路径：<b>Settings -> Tools -> Yapi_ApiKey</b>
+    配置路径：<b>Settings -> Tools -> yapi_setting</b>
     </em>
     ]]></description>
 
 
-    <!-- Product and plugin compatibility requirements.
-         Read more: https://plugins.jetbrains.com/docs/intellij/plugin-compatibility.html -->
-    <depends>com.intellij.modules.platform</depends>
 
     <!-- Extension points defined by the plugin.
          Read more: https://plugins.jetbrains.com/docs/intellij/plugin-extension-points.html -->
@@ -60,7 +62,7 @@
         <!-- parentId配置界面在哪个菜单下，instance指定配置界面的类-->
         <applicationConfigurable parentId="tools" instance="com.plugin.demo.setting.CodeChronoSettingsConfigurable"
                                  id="ApiKey.Config"
-                                 displayName="Yapi_ApiKey"/>
+                                 displayName="yapi_setting"/>
 
         <codeInsight.codeVisionProvider id="YapiProvider" implementation="com.plugin.demo.codeinsight.YapiProvider"/>
 

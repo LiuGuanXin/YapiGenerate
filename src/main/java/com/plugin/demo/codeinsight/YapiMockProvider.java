@@ -66,17 +66,11 @@ public class YapiMockProvider implements CodeVisionProvider<Unit> {
     @NotNull
     @Override
     public List<CodeVisionRelativeOrdering> getRelativeOrderings() {
-        return List.of(new CodeVisionRelativeOrdering.CodeVisionRelativeOrderingAfter("YapiProvider"),
+        return List.of(
+                new CodeVisionRelativeOrdering.CodeVisionRelativeOrderingAfter("YapiProvider"),
                 new CodeVisionRelativeOrdering.CodeVisionRelativeOrderingBefore("YapiSendProvider"));
     }
 
-
-
-    @Nullable
-    @Override
-    public CodeVisionPlaceholderCollector getPlaceholderCollector(@NotNull Editor editor, @Nullable PsiFile psiFile) {
-        return null;
-    }
 
     @NotNull
     @Override

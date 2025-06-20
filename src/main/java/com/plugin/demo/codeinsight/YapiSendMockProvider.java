@@ -6,13 +6,13 @@ import com.intellij.codeInsight.codeVision.ui.model.CodeVisionPredefinedActionEn
 import com.intellij.codeInsight.hints.InlayHintsUtils;
 import com.intellij.openapi.application.ApplicationManager;
 import com.intellij.openapi.editor.Document;
+import com.intellij.openapi.editor.Editor;
 import com.intellij.openapi.editor.ex.DocumentEx;
 import com.intellij.openapi.project.Project;
 import com.intellij.openapi.util.Computable;
 import com.intellij.openapi.util.Key;
 import com.intellij.openapi.util.KeyWithDefaultValue;
 import com.intellij.openapi.util.TextRange;
-import com.intellij.openapi.editor.Editor;
 import com.intellij.psi.*;
 import groovyjarjarantlr4.v4.runtime.misc.NotNull;
 import groovyjarjarantlr4.v4.runtime.misc.Nullable;
@@ -28,11 +28,11 @@ import java.util.Objects;
  * @author Liu Guangxin
  * @date 2025/6/12 16:40
  */
-public class YapiProvider implements CodeVisionProvider<Unit> {
+public class YapiSendMockProvider implements CodeVisionProvider<Unit> {
 
     public static final String GROUP_ID = "com.demo";
-    public static final String ID = "YapiProvider";
-    public static final String NAME = "文档生成";
+    public static final String ID = "YapiSendMockProvider";
+    public static final String NAME = "在Yapi上创建接口（生成Mock数据）";
 
     private static final Key<Long> MODIFICATION_STAMP_KEY = Key.create("myPlugin.modificationStamp");
     private static final Key<Integer> MODIFICATION_STAMP_COUNT_KEY = KeyWithDefaultValue.create("myPlugin.modificationStampCount", 0);
@@ -66,9 +66,8 @@ public class YapiProvider implements CodeVisionProvider<Unit> {
     @NotNull
     @Override
     public List<CodeVisionRelativeOrdering> getRelativeOrderings() {
-        return List.of(CodeVisionRelativeOrdering.CodeVisionRelativeOrderingFirst.INSTANCE);
+        return List.of(CodeVisionRelativeOrdering.CodeVisionRelativeOrderingLast.INSTANCE);
     }
-
 
 
     @NotNull
@@ -78,7 +77,7 @@ public class YapiProvider implements CodeVisionProvider<Unit> {
         List<Pair<TextRange, CodeVisionEntry>> lenses = new ArrayList<>();
         for (PsiMethod psiMethod : psiMethods) {
             TextRange range = InlayHintsUtils.INSTANCE.getTextRangeWithoutLeadingCommentsAndWhitespaces(psiMethod);
-            MyClickHandler handler = new MyClickHandler(psiMethod, false);
+            SendYapiClickHandler handler = new SendYapiClickHandler(psiMethod, true);
             CodeVisionEntry entry = new ClickableTextCodeVisionEntry(getName(), getId(), handler, null, getName(), getName(), List.of());
             lenses.add(new Pair<>(range, entry));
         }
@@ -101,13 +100,6 @@ public class YapiProvider implements CodeVisionProvider<Unit> {
 				if (isControllerMethod(method)) {
 					result.add(method);
 				}
-//				PsiClass containingClass = method.getContainingClass();
-//				if (containingClass == null) continue;
-//
-//				if (hasAnnotation(containingClass, "org.springframework.stereotype.Controller") ||
-//					hasAnnotation(containingClass, "org.springframework.web.bind.annotation.RestController")) {
-//					result.add(method);
-//				}
 			}
 			return result;
 		});

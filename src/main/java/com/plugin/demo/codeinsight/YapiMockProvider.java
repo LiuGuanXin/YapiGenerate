@@ -31,7 +31,7 @@ import java.util.Objects;
 public class YapiMockProvider implements CodeVisionProvider<Unit> {
 
     public static final String GROUP_ID = "com.demo";
-    public static final String ID = "generateYapiMock";
+    public static final String ID = "YapiMockProvider";
     public static final String NAME = "文档生成(同时生成Mock数据)";
 
     private static final Key<Long> MODIFICATION_STAMP_KEY = Key.create("myPlugin.modificationStamp");

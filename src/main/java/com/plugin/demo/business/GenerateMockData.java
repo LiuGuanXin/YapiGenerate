@@ -56,54 +56,107 @@ public class GenerateMockData {
             }
             你只需要返回json的内容，不需要返回其他一切内容。json内容如下：""";
 
+
+    private static final String PARAMS_PROMPT = """
+            我会给你一段json对象，这个json包含字段(key)和字段描述(value)，你需要做以下的操作：
+            1. 你需要根据key（字段名称）和value（字段描述）来生成该字段值的模拟数据。
+            2. 你需要将生成的模拟数据在json中替换字段描述的位置，键值对由“字段 - 字段描述”改为“字段 - 模拟数据”。
+            注意：
+            1. 模拟数据均为字符串类型的数据。
+            2. id相关字段为uuid（没有-相连）。
+            3. 如果存在identificationCode字段它的格式格式例如：
+            88.163.12/3010012213405MA3D2XXA202106000008。
+            示例：
+            {
+                  "entityId":"实体id",
+                  "entityName":"实体名称",
+                  "publicScope":"公开范围 0 全部  1 部分",
+                  "iconUrl":"知识库图标"
+            }
+            转换为：
+            {
+                  "entityId":"223e4567e89b12d3a456426614174001",
+                  "entityName":"说明书",
+                  "publicScope":"0",
+                  "iconUrl":"https://www.icon.com"
+            }
+            你只需要返回json的内容，不需要返回其他一切内容。json内容如下：""";
+
+
+    private static final String DESC_PROMPT = """
+            我会给你一段json数组，这个json的是键值对的样式，你需要做以下的操作：
+            1. 你要根据key的值去生成对应的描述填充json结构。
+            示例：
+            {
+                  "name":"",
+                  "type":""
+            }
+            转换为：
+            {
+                  "name":"名称",
+                  "type":"类型"
+            }
+            你只需要返回json的内容，不需要返回其他一切内容。json内容如下：""";
+
     public static void main(String[] args) {
         String json = """
             {
-              "data":{
-                "realName":"string",
-                "password":"string"
-              },
-              "message":"string",
-              "status":"number"
+                  "name":"",
+                  "id":"",
+                  "ids":"",
+                  "size":"",
+                  "path":""
             }
             """;
-
-        // 阿里云
-//        try {
-//            String result = callWithMessage(json,
-//                    state.aLiApiKey, "qwen-max-latest");
-//            System.out.println(result);
-//        } catch (ApiException | NoApiKeyException | InputRequiredException e) {
-//            System.err.println("错误信息："+e.getMessage());
-//        }
-
-        // 智谱
-//        ClientV4 client = new ClientV4.Builder(state.apiKey)
-//                    .networkConfig(30, 30, 30, 30, TimeUnit.MINUTES)
-//                    .build();
-//        ChatMessage chatMessage = sendChatMessage(
-//                client,
-//                new ChatMessage(ChatMessageRole.SYSTEM.value(), PROMPT),
-//                new ChatMessage(ChatMessageRole.USER.value(), json));
-//        System.out.println(chatMessage.getContent());
+        String result = generateDesc(json);
+        System.out.println(result);
     }
 
     public static String generateMock(String json) {
         CodeChronoSettings.State state = Objects.requireNonNull(CodeChronoSettings.getInstance().getState());
         if (state.type == 1) {
             try {
-                return aLiGenerate(state, json);
+                return aLiGenerate(PROMPT, state, json);
             } catch (Exception e) {
                 return "2";
             }
         } else {
-            return zhiPuGenerate(state, json);
+            return zhiPuGenerate(PROMPT, state, json);
+        }
+    }
+
+    public static String generateDesc(String json) {
+        CodeChronoSettings.State state = Objects.requireNonNull(CodeChronoSettings.getInstance().getState());
+//        CodeChronoSettings.State state = new CodeChronoSettings.State();
+        if (state.type == 1) {
+            try {
+                return aLiGenerate(DESC_PROMPT, state, json);
+            } catch (Exception e) {
+                return "2";
+            }
+        } else {
+            return zhiPuGenerate(DESC_PROMPT, state, json);
+        }
+    }
+
+    public static String generateRequestParamsMock(String json) {
+//        CodeChronoSettings.State state = Objects.requireNonNull(CodeChronoSettings.getInstance().getState());
+        CodeChronoSettings.State state = new CodeChronoSettings.State();
+        if (state.type == 1) {
+            try {
+                return aLiGenerate(PARAMS_PROMPT, state, json);
+            } catch (Exception e) {
+                return "2";
+            }
+        } else {
+            return zhiPuGenerate(PARAMS_PROMPT, state, json);
         }
     }
 
 
 
-    private static String zhiPuGenerate(CodeChronoSettings.State state, String json) {
+
+    private static String zhiPuGenerate(String prompt, CodeChronoSettings.State state, String json) {
         if (state.zhiPuApiKey == null || state.zhiPuApiKey.isEmpty()) {
             System.out.println("请在设置中配置API_KEY");
             return "1";
@@ -121,7 +174,7 @@ public class GenerateMockData {
                 .model(state.zhiPuModelName)
                 .stream(Boolean.FALSE)
                 .invokeMethod(Constants.invokeMethod)
-                .messages(List.of(new ChatMessage(ChatMessageRole.SYSTEM.value(), PROMPT),
+                .messages(List.of(new ChatMessage(ChatMessageRole.SYSTEM.value(), prompt),
                         new ChatMessage(ChatMessageRole.USER.value(), json)))
                 .build();
         ModelApiResponse invokeModelApiResp = client.invokeModelApi(chatCompletionRequest);
@@ -138,13 +191,13 @@ public class GenerateMockData {
         return message.getContent().toString();
     }
 
-    public static String aLiGenerate(CodeChronoSettings.State state, String userMessage) throws ApiException, NoApiKeyException, InputRequiredException {
+    public static String aLiGenerate(String prompt, CodeChronoSettings.State state, String userMessage) throws ApiException, NoApiKeyException, InputRequiredException {
         String apiKey = state.aLiApiKey;
         String modelName = state.aLiModelName;
         Generation gen = new Generation();
         Message systemMsg = Message.builder()
                 .role(Role.SYSTEM.getValue())
-                .content(PROMPT)
+                .content(prompt)
                 .build();
         Message userMsg = Message.builder()
                 .role(Role.USER.getValue())

@@ -2,7 +2,7 @@
 <idea-plugin>
     <!-- Unique identifier of the plugin. It should be FQN. It cannot be changed between the plugin versions. -->
     <id>YapiResultGenerate</id>
-    <version>1.1</version>
+    <version>1.1.3</version>
     <depends>com.intellij.modules.java</depends>
     <!-- Product and plugin compatibility requirements.
      Read more: https://plugins.jetbrains.com/docs/intellij/plugin-compatibility.html -->
@@ -30,6 +30,7 @@
     <li><b>文档生成</b>生成当前接口的 Yapi 文档（侧边栏窗口展示）。</li>
     <li><b>文档生成 (同时生成mock数据)：</b>生成接口文档并附带 Mock 数据（侧边栏窗口展示）。</li>
     <li><b>在Yapi上创建接口：</b>在Settings -> Tools -> yapi_setting配置Yapi信息后直接创建接口。</li>
+    <li><b>在Yapi上创建接口(mock数据)：</b>在Settings -> Tools -> yapi_setting配置Yapi信息后直接创建接口，同时生成mock数据。</li>
     </ul>
 
     <b>Usage Method 2 / 使用方式二：</b><br>
@@ -68,7 +69,9 @@
 
         <codeInsight.codeVisionProvider id="YapiMockProvider" implementation="com.plugin.demo.codeinsight.YapiMockProvider"/>
 
-        <codeInsight.codeVisionProvider implementation="com.plugin.demo.codeinsight.YapiSendProvider"/>
+        <codeInsight.codeVisionProvider id="YapiSendProvider" implementation="com.plugin.demo.codeinsight.YapiSendProvider"/>
+
+        <codeInsight.codeVisionProvider id="YapiSendMockProvider" implementation="com.plugin.demo.codeinsight.YapiSendMockProvider"/>
 
     </extensions>
 

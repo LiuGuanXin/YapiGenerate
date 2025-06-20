@@ -24,6 +24,7 @@ public class YapiInterface {
     private static String cookie;
     private static String userName;
     private static String password;
+    private static final Integer TIMEOUT = 5 * 1000;
     public static String getToken() {
         CodeChronoSettings.State state = CodeChronoSettings.getInstance().getState();
         assert state != null;
@@ -34,7 +35,7 @@ public class YapiInterface {
         String jsonBodyStr = JSON.toJSONString(jsonObject);
         HttpResponse httpResponse = HttpRequest.post(url)
                 .header("content-type", "application/json; charset=utf-8")
-                .timeout(10 * 60 * 1000)
+                .timeout(TIMEOUT)
                 .body(jsonBodyStr)
                 .execute();
         String jsonStr = httpResponse.body();
@@ -43,7 +44,7 @@ public class YapiInterface {
             List<String> heads = httpResponse.headerList("set-cookie");
             String cookie = "";
             for (String head : heads) {
-                if (head.startsWith("yapi_token=")) {
+                if (head.startsWith("_yapi_token=")) {
                     cookie = head;
                 }
             }
@@ -58,7 +59,7 @@ public class YapiInterface {
     private static String getCookie() {
         CodeChronoSettings.State state = CodeChronoSettings.getInstance().getState();
         assert state != null;
-        if (cookie == null
+        if (cookie == null || cookie.isEmpty()
                 || !ObjectUtil.equal(userName, state.userName)
                 || !ObjectUtil.equal(password, state.password)) {
             return getToken();
@@ -73,7 +74,7 @@ public class YapiInterface {
         String url = state.url + "/api/group/list";
         String jsonStr = HttpRequest.get(url)
                 .header("cookie", getCookie())
-                .timeout(10 * 60 * 1000)
+                .timeout(TIMEOUT)
                 .execute()
                 .body();
         JSONObject object = JSON.parseObject(jsonStr);
@@ -94,7 +95,7 @@ public class YapiInterface {
         String url = state.url + "/api/project/list?group_id=" + groupId;
         String jsonStr = HttpRequest.get(url)
                 .header("cookie", getCookie())
-                .timeout(10 * 60 * 1000)
+                .timeout(TIMEOUT)
                 .execute()
                 .body();
         JSONObject object = JSON.parseObject(jsonStr);
@@ -115,7 +116,7 @@ public class YapiInterface {
         String url = state.url + "/api/interface/list_menu?project_id=" + categoryId;
         String jsonStr = HttpRequest.get(url)
                 .header("cookie", getCookie())
-                .timeout(10 * 60 * 1000)
+                .timeout(TIMEOUT)
                 .execute()
                 .body();
         JSONObject object = JSON.parseObject(jsonStr);
@@ -134,12 +135,11 @@ public class YapiInterface {
         String url = state.url + "/api/interface/list?page=1&limit=10000&project_id=" + projectId;
         String jsonStr = HttpRequest.get(url)
                 .header("cookie", getCookie())
-                .timeout(10 * 60 * 1000)
+                .timeout(TIMEOUT)
                 .execute()
                 .body();
         JSONObject object = JSON.parseObject(jsonStr);
         JSONArray jsonArray = object.getJSONObject("data").getJSONArray("list");
-        Map<String, String> map = new HashMap<>(jsonArray.size());
         String id = "";
         for (Object data : jsonArray) {
             JSONObject o = (JSONObject) data;
@@ -198,7 +198,7 @@ public class YapiInterface {
         String jsonBodyStr = JSON.toJSONString(jsonObject);
         String jsonStr = HttpRequest.post(url)
                 .header("content-type", "application/json;charset=UTF-8")
-                .header("cookie", cookie)
+                .header("cookie", getCookie())
                 .timeout(10 * 1000)
                 .body(jsonBodyStr)
                 .execute()
@@ -207,26 +207,23 @@ public class YapiInterface {
         if (0 == (int) object.get("errcode")) {
             resultMap.put("status", "success");
             resultMap.put("id", object.getJSONObject("data").getInteger("_id").toString());
-            resultMap.put("catId", map.get(state.categoryName));
-            resultMap.put("project_id", map.get(state.projectName));
-            return resultMap;
         } else {
             resultMap.put("status", "fail");
             String id = getInterfaceId(projectMap.get(state.projectName), path, methodName);
             resultMap.put("errorCode", object.getInteger("errcode").toString());
             resultMap.put("errmsg", object.getString("errmsg"));
             resultMap.put("id", id);
-            resultMap.put("catId", map.get(state.categoryName));
-            resultMap.put("project_id", map.get(state.projectName));
             //  已存在的接口 40022
-            return resultMap;
         }
+        resultMap.put("catId", map.get(state.categoryName));
+        resultMap.put("project_id", map.get(state.projectName));
+        return resultMap;
 
     }
 
     public static String updateInterface(String id, String catId, String methodName,
                                          String path, String body, String returnResult,
-                                         JSONArray params, String title) {
+                                         JSONArray params, List<JSONObject> pathVariable,String title) {
         CodeChronoSettings.State state = CodeChronoSettings.getInstance().getState();
         assert state != null;
         String url = state.url + "/api/interface/up";
@@ -250,12 +247,8 @@ public class YapiInterface {
 //        jsonObject.put("req_headers", path);
         // 处理路径参数
         JSONArray jsonArray = new JSONArray();
-        List<String> pathParams = extractPathParams(path);
-        for (String param : pathParams) {
-            JSONObject object = new JSONObject();
-            object.put("name", param);
-            object.put("desc", "");
-            jsonArray.add(object);
+        if (ObjectUtil.isNotNull(pathVariable)) {
+            jsonArray.addAll(pathVariable);
         }
         jsonObject.put("req_params", jsonArray);
 
@@ -271,8 +264,8 @@ public class YapiInterface {
         String jsonBodyStr = JSON.toJSONString(jsonObject);
         String jsonStr = HttpRequest.post(url)
                 .header("content-type", "application/json;charset=UTF-8")
-                .header("cookie", cookie)
-                .timeout(10 * 60 * 1000)
+                .header("cookie", getCookie())
+                .timeout(TIMEOUT)
                 .body(jsonBodyStr)
                 .execute()
                 .body();
@@ -284,16 +277,6 @@ public class YapiInterface {
         }
     }
 
-    public static List<String> extractPathParams(String url) {
-        List<String> params = new ArrayList<>();
-        Pattern pattern = Pattern.compile("\\{(\\w+)}");
-        Matcher matcher = pattern.matcher(url);
-
-        while (matcher.find()) {
-            params.add(matcher.group(1));
-        }
-        return params;
-    }
 
     public static String getInterfacePath(String id) {
         // 获取接口名称
@@ -310,7 +293,7 @@ public class YapiInterface {
         String url = state.url + "/api/interface/get?id=" + id;
         String jsonStr = HttpRequest.get(url)
                 .header("cookie", getCookie())
-                .timeout(10 * 60 * 1000)
+                .timeout(TIMEOUT)
                 .execute()
                 .body();
         JSONObject object = JSON.parseObject(jsonStr);
@@ -327,7 +310,7 @@ public class YapiInterface {
         String url = state.url + "/api/project/get?id=" + map.get("projectId");
         String jsonStr = HttpRequest.get(url)
                 .header("cookie", getCookie())
-                .timeout(10 * 60 * 1000)
+                .timeout(TIMEOUT)
                 .execute()
                 .body();
         JSONObject object = JSON.parseObject(jsonStr);

@@ -31,7 +31,7 @@ import java.util.Objects;
 public class YapiSendProvider implements CodeVisionProvider<Unit> {
 
     public static final String GROUP_ID = "com.demo";
-    public static final String ID = "generateYapiSend";
+    public static final String ID = "YapiSendProvider";
     public static final String NAME = "在Yapi上创建接口";
 
     private static final Key<Long> MODIFICATION_STAMP_KEY = Key.create("myPlugin.modificationStamp");
@@ -66,7 +66,10 @@ public class YapiSendProvider implements CodeVisionProvider<Unit> {
     @NotNull
     @Override
     public List<CodeVisionRelativeOrdering> getRelativeOrderings() {
-        return List.of(CodeVisionRelativeOrdering.CodeVisionRelativeOrderingLast.INSTANCE);
+        return List.of(
+                new CodeVisionRelativeOrdering.CodeVisionRelativeOrderingAfter("YapiMockProvider"),
+                new CodeVisionRelativeOrdering.CodeVisionRelativeOrderingBefore("YapiSendMockProvider"));
+
     }
 
 

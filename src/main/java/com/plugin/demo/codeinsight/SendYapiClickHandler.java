@@ -3,22 +3,26 @@ package com.plugin.demo.codeinsight;
 import com.alibaba.fastjson.JSON;
 import com.alibaba.fastjson.JSONArray;
 import com.alibaba.fastjson.JSONObject;
+import com.intellij.openapi.application.ApplicationManager;
 import com.intellij.openapi.editor.Editor;
 import com.intellij.openapi.project.Project;
-import com.intellij.openapi.ui.popup.JBPopupFactory;
 import com.intellij.openapi.wm.ToolWindow;
 import com.intellij.openapi.wm.ToolWindowManager;
 import com.intellij.psi.*;
+import com.intellij.psi.javadoc.PsiDocComment;
+import com.intellij.psi.javadoc.PsiDocTag;
 import com.plugin.demo.business.ClassParse;
+import com.plugin.demo.business.GenerateMockData;
 import com.plugin.demo.event.AnalysisTopics;
 import com.plugin.demo.model.FieldInfo;
 import com.plugin.demo.yapi.YapiInterface;
 import kotlin.Unit;
 import kotlin.jvm.functions.Function2;
-import kotlinx.html.S;
 
 import java.awt.event.MouseEvent;
 import java.util.*;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 
 /**
@@ -74,20 +78,48 @@ class SendYapiClickHandler implements Function2<MouseEvent, Editor, Unit> {
 	}
 
 	private void update(Map<String, String> resultMap, Map<String, String> map, String methodDoc) {
-		// 更新数据
-		Map<String, Object> paramsMap = getParams(psiMethod);
-		YapiInterface.updateInterface(
-				resultMap.get("id"), resultMap.get("catId"),
-				map.get("method"), map.get("path"),
-                (String) paramsMap.get("body"),
-				(String) paramsMap.get("return"),
-				(JSONArray) paramsMap.get("params"),
-				methodDoc);
-		new FinishDialogWrapper().showAndGet();
-//		JBPopupFactory.getInstance().createConfirmation("完成", null, 1).showInFocusCenter();
+		if (mock) {
+			// 异步执行，不阻塞主线程
+			try {
+				// 更新数据
+				new PromptDialogWrapper("点击确认后生成Mock数据，生成速度慢，请稍后，不要重复点击。").showAndGet();
+				ApplicationManager.getApplication().executeOnPooledThread(() -> {
+					ApplicationManager.getApplication().runReadAction(() -> {
+						Map<String, Object> paramsMap = getParams(psiMethod, map);
+						YapiInterface.updateInterface(
+								resultMap.get("id"), resultMap.get("catId"),
+								map.get("method"), map.get("path"),
+								(String) paramsMap.get("body"),
+								(String) paramsMap.get("return"),
+								(JSONArray) paramsMap.get("params"),
+								(List<JSONObject>) paramsMap.get("pathVariable"), methodDoc
+						);
+						// UI 相关部分在 EDT 中执行
+						ApplicationManager.getApplication().invokeLater(() -> {
+							new FinishDialogWrapper().showAndGet();
+						});
+					});
+				});
+
+			} catch (Exception e) {
+				new PromptDialogWrapper("处理过程出现异常，请重试.....").showAndGet();
+			}
+
+		} else {
+			// 更新数据
+			Map<String, Object> paramsMap = getParams(psiMethod, map);
+			YapiInterface.updateInterface(
+					resultMap.get("id"), resultMap.get("catId"),
+					map.get("method"), map.get("path"),
+					(String) paramsMap.get("body"),
+					(String) paramsMap.get("return"),
+					(JSONArray) paramsMap.get("params"),
+                    (List<JSONObject>) paramsMap.get("pathVariable"), methodDoc);
+			new FinishDialogWrapper().showAndGet();
+		}
 	}
 
-    private Map<String, Object> getParams(PsiMethod psiMethod) {
+    private Map<String, Object> getParams(PsiMethod psiMethod, Map<String, String> methodMap) {
 		Map<String, Object> map = new HashMap<>(2);
 		// 获取参数  如果仅有一个参数且该参数为自定义对象，则需要生成请求体参数
 		PsiParameter[] parameter = psiMethod.getParameterList().getParameters();
@@ -100,8 +132,23 @@ class SendYapiClickHandler implements Function2<MouseEvent, Editor, Unit> {
 				}
 			}
 		}
+		// 获取 注释中的参数备注
+		Map<String, String> paramComments = getParamComments(psiMethod);
+		List<JSONObject> pathVariable = new ArrayList<>();
+		List<String> pathParams = extractPathParams(methodMap.get("path"));
+		if (!pathParams.isEmpty()) {
+			// 处理路径参数
+			for (String param : pathParams) {
+				JSONObject object = new JSONObject();
+				object.put("name", param);
+				object.put("desc", paramComments.getOrDefault(param, ""));
+				pathVariable.add(object);
+			}
+			map.put("pathVariable", pathVariable);
+
+		}
 		if (isGetMapping(psiMethod)) {
-			JSONArray params = getRequestParam(parameter);
+			JSONArray params = getRequestParam(parameter, paramComments);
 			map.put("params", params);
 		}
         if (!body.isEmpty()) {
@@ -121,7 +168,19 @@ class SendYapiClickHandler implements Function2<MouseEvent, Editor, Unit> {
         }
         return map;
     }
-	private JSONArray getRequestParam(PsiParameter[] parameter) {
+
+	public static List<String> extractPathParams(String url) {
+		List<String> params = new ArrayList<>();
+		Pattern pattern = Pattern.compile("\\{(\\w+)}");
+		Matcher matcher = pattern.matcher(url);
+
+		while (matcher.find()) {
+			params.add(matcher.group(1));
+		}
+		return params;
+	}
+
+	private JSONArray getRequestParam(PsiParameter[] parameter, Map<String, String> paramComments) {
 		JSONArray jsonArray = new JSONArray();
 		for (PsiParameter psiParameter: parameter) {
 			// 1. 排除注解为路径参数的参数
@@ -137,18 +196,18 @@ class SendYapiClickHandler implements Function2<MouseEvent, Editor, Unit> {
 				jsonObject.put("name", psiParameter.getName());
 				jsonObject.put("required", "1");
 				jsonObject.put("example", "");
-				jsonObject.put("desc", "");
+				jsonObject.put("desc", paramComments.getOrDefault(psiParameter.getName(), ""));
 				jsonArray.add(jsonObject);
 			} else if (psiParameter.getType().getPresentableText().startsWith("Page<")) {
 				JSONObject jsonObject = new JSONObject();
 				jsonObject.put("name", "current");
-				jsonObject.put("required", "1");
+				jsonObject.put("required", "0");
 				jsonObject.put("example", "1");
 				jsonObject.put("desc", "当前页");
 				jsonArray.add(jsonObject);
 				JSONObject jsonObject1 = new JSONObject();
 				jsonObject1.put("name", "size");
-				jsonObject1.put("required", "1");
+				jsonObject1.put("required", "0");
 				jsonObject1.put("example", "10");
 				jsonObject1.put("desc", "每页数量");
 				jsonArray.add(jsonObject1);
@@ -164,7 +223,7 @@ class SendYapiClickHandler implements Function2<MouseEvent, Editor, Unit> {
 							&& !"array".equals(fieldInfo.getType())) {
 						JSONObject jsonObject = new JSONObject();
 						jsonObject.put("name", fieldInfo.getName());
-						jsonObject.put("required", "1");
+						jsonObject.put("required", "0");
 						jsonObject.put("example", "");
 						jsonObject.put("desc", fieldInfo.getDescription());
 						jsonArray.add(jsonObject);
@@ -172,8 +231,63 @@ class SendYapiClickHandler implements Function2<MouseEvent, Editor, Unit> {
 				}
 			}
 		}
+		if (mock) {
+			// 生成描述
+			Map<String, String> nameMap = new HashMap<>(10);
+			for (Object o : jsonArray) {
+				JSONObject object = (JSONObject) o;
+				if ((object.getString("desc")).isEmpty()) {
+					nameMap.put(object.getString("name"), "");
+				}
+			}
+			// 生成mock数据
+			String result = GenerateMockData.generateDesc(JSON.toJSONString(nameMap));
+			result = result.replace("```json", "");
+			result = result.replace("```", "");
+			JSONObject jsonObject = JSON.parseObject(result);
+			Map<String, String> descMap = new HashMap<>(10);
+			for (Object o : jsonArray) {
+				JSONObject object = (JSONObject) o;
+				if ((object.getString("desc")).isEmpty()) {
+					((JSONObject) o).put("desc", jsonObject.getString(object.getString("name")));
+				}
+				descMap.put(object.getString("name"), object.getString("desc"));
+			}
+			String mockData = GenerateMockData.generateRequestParamsMock(JSON.toJSONString(descMap));
+			mockData = mockData.replace("```json", "");
+			mockData = mockData.replace("```", "");
+			JSONObject mockJsonObject = JSON.parseObject(mockData);
+			for (Object o : jsonArray) {
+				((JSONObject) o).put("example", mockJsonObject.getString(((JSONObject) o).getString("name")));
+			}
+		}
 		return jsonArray;
 	}
+
+	private Map<String, String> getParamComments(PsiMethod psiMethod) {
+		Map<String, String> paramCommentMap = new HashMap<>();
+
+		PsiDocComment docComment = psiMethod.getDocComment();
+		if (docComment != null) {
+			for (PsiDocTag docTag : docComment.findTagsByName("param")) {
+				PsiElement[] dataElements = docTag.getDataElements();
+				if (dataElements.length > 0) {
+					String paramName = dataElements[0].getText();
+					// 获取 @param 标签之后的文本内容作为注释
+					String commentText = docTag.getText().replaceFirst("@param\\s+" + paramName, "").trim();
+					commentText = commentText.replace("\n", "");
+					commentText = commentText.replace("*", "").trim();
+					paramCommentMap.put(paramName, commentText);
+				}
+			}
+		}
+
+		return paramCommentMap;
+	}
+
+
+
+
 	private String getBody(PsiParameter parameter) {
 		List<FieldInfo> fieldInfos;
 		String body = "";

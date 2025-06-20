@@ -660,9 +660,11 @@ public class ClassParse {
             if (javaDocText.contains("@")) {
                 javaDocText = javaDocText.substring(0, javaDocText.indexOf('@'));
             }
-            return javaDocText;
+            if (!javaDocText.isEmpty()) {
+                return javaDocText;
+            }
         }
-        return "默认的接口名称";
+        return psiMethod.getName();
     }
 
     /**

@@ -1,6 +1,6 @@
 # 🔧 Yapi Generate Plugin for IntelliJ IDEA
 
-该插件用于在 **IntelliJ IDEA** 中根据 Java 实体类自动生成 Yapi 接口定义的 JSON 数据与文档，提升接口编写效率。
+该插件用于在 **IntelliJ IDEA** 中根据 Java 接口代码文档生成Yapi接口格式文档内容，可直接在Yapi服务上生成接口，支持基于大语言模型的Mock数据生成。
 
 ---
 

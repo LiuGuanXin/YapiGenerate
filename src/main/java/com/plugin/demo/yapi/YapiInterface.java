@@ -231,7 +231,7 @@ public class YapiInterface {
         String url = state.url + "/api/interface/up";
         JSONObject jsonObject = new JSONObject();
 
-        if ("GET".equals(methodName)) {
+        if (params != null && !params.isEmpty()) {
             jsonObject.put("req_query", params);
         }
         // 处理额外参数配置

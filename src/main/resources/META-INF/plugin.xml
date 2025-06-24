@@ -2,7 +2,7 @@
 <idea-plugin>
     <!-- Unique identifier of the plugin. It should be FQN. It cannot be changed between the plugin versions. -->
     <id>YapiResultGenerate</id>
-    <version>1.1.4</version>
+    <version>1.1.5</version>
     <depends>com.intellij.modules.java</depends>
     <!-- Product and plugin compatibility requirements.
      Read more: https://plugins.jetbrains.com/docs/intellij/plugin-compatibility.html -->
@@ -76,7 +76,7 @@
                         "desc":"访问令牌"
                       }
                     ]
-                }
+                }0
     </b></li></ol>
     配置路径：<b>Settings -> Tools -> yapi_setting</b> <br>
     </em>
@@ -84,8 +84,7 @@
 
     <change-notes><![CDATA[
         <ul>
-            <li><b>优化返回结果的通用性解析</b></li>
-            <li><b>重写mock数据生成方法</b></li>
+            <li><b>请求参数解析优化</b></li>
             <li><b>修复部分问题</b></li>
         </ul>
     ]]></change-notes>

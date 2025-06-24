@@ -81,7 +81,7 @@ class WindowsClickHandler implements Function2<MouseEvent, Editor, Unit> {
                     "```json\n" + paramsString + "\n```\n";
         }
         if (body != null) {
-            result = result + "返回结果的元数据格式如下：\n" +
+            result = result + "请求体的元数据格式如下：\n" +
                     "```json\n" + body + "\n```\n";
         }
         if (returnString != null) {

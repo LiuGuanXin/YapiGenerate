@@ -618,11 +618,16 @@ public class ClassParse {
 		// 请求体的请求
 		if (!isGetMapping(psiMethod)) {
 			for (PsiParameter psiParameter: parameter) {
-				if (ClassParse.isCustomType(psiParameter.getType())) {
-                    PsiType fieldType = psiParameter.getType();
-                    PsiClassType classType = (PsiClassType) fieldType;
-					body = getBody(classType, mock);
-				}
+                PsiType fieldType = psiParameter.getType();
+                // 1. 请求体的参数绑定
+                PsiAnnotation[] annotations = psiParameter.getAnnotations();
+                for (PsiAnnotation annotation : annotations) {
+                    if (Objects.requireNonNull(annotation.getQualifiedName()).contains("RequestBody")) {
+                        PsiClassType classType = (PsiClassType) fieldType;
+                        body = getBody(classType, mock);
+                        break;
+                    }
+                }
 			}
 		}
 		// 获取 注释中的参数备注
@@ -642,11 +647,10 @@ public class ClassParse {
 
             }
         }
-
-		if (isGetMapping(psiMethod)) {
-			JSONArray params = getRequestParam(parameter, paramComments, mock);
-			map.put("params", params);
-		}
+        JSONArray params = getRequestParam(parameter, paramComments, mock);
+        if (!params.isEmpty()) {
+            map.put("params", params);
+        }
         if (!body.isEmpty()) {
 			map.put("body", body);
         }
@@ -680,10 +684,11 @@ public class ClassParse {
 		JSONArray jsonArray = new JSONArray();
 		outer:
 		for (PsiParameter psiParameter: parameter) {
-			// 1. 排除注解为路径参数的参数
+			// 1. 排除注解为路径参数的参数 和 请求体参数
 			PsiAnnotation[] annotations = psiParameter.getAnnotations();
 			for (PsiAnnotation annotation : annotations) {
-				if (Objects.requireNonNull(annotation.getQualifiedName()).contains("PathVariable")) {
+				if (Objects.requireNonNull(annotation.getQualifiedName()).contains("PathVariable")
+                    || Objects.requireNonNull(annotation.getQualifiedName()).contains("RequestBody")) {
 					continue outer;
 				}
 			}
@@ -830,21 +835,21 @@ public class ClassParse {
 			// 获取列表的泛型参数
 			PsiType substituted = substitutor.substitute(classType);
 			PsiClassType psiClassType = (PsiClassType) substituted;
-			PsiClass subPsiClass = psiClassType.resolve();
-			if (subPsiClass != null && ClassParse.isCustomType(psiClassType)) {
-				List<FieldInfo> returnObjList = ClassParse.parseFieldsWithComments(subPsiClass, substitutor);
-				resultResult = ClassParse.getJsonResultMeta(returnObjList, "List", mock);
-			} else if (subPsiClass != null) {
-				PsiType[] generics = classType.getParameters();
-				if (generics.length > 0 && generics[0] instanceof PsiClassType) {
-					PsiClass genericClass = ((PsiClassType) generics[0]).resolve();
-					String type = ClassParse.typeTransform(genericClass.getQualifiedName()
-							.substring(genericClass.getQualifiedName().lastIndexOf('.') + 1));
-					JSONObject schema = JSON.parseObject(ClassParse.META_SCHEMA_LIST);
-					schema.getJSONObject("items").put("type",type);
-					resultResult = JSON.toJSONString(schema, SerializerFeature.PrettyFormat);
-				}
-			}
+            PsiType[] generics = psiClassType.getParameters();
+            if (generics.length > 0 && generics[0] instanceof PsiClassType) {
+                PsiClass genericClass = ((PsiClassType) generics[0]).resolve();
+                if (genericClass != null && isCustomType(generics[0]) && genericClass != psiClass) {
+                    PsiSubstitutor nestedSubstitutor = ((PsiClassType) generics[0]).resolveGenerics().getSubstitutor();
+                    List<FieldInfo> returnObjList = ClassParse.parseFieldsWithComments(genericClass, nestedSubstitutor);
+                    resultResult = ClassParse.getJsonResultMeta(returnObjList, "List", mock);
+                } else {
+                    String type = ClassParse.typeTransform(genericClass.getQualifiedName()
+                            .substring(genericClass.getQualifiedName().lastIndexOf('.') + 1));
+                    JSONObject schema = JSON.parseObject(ClassParse.META_SCHEMA_LIST);
+                    schema.getJSONObject("items").put("type",type);
+                    resultResult = JSON.toJSONString(schema, SerializerFeature.PrettyFormat);
+                }
+            }
 		} else {
 			// 如果是MAP类型 不处理
 		}

@@ -37,7 +37,40 @@ public final class CodeChronoSettings implements PersistentStateComponent<CodeCh
         public String projectName = "数典知识库";
         public String categoryName = "公共分类";
         public String url = "http://192.168.99.206:3000";
+        public String jsonText = """
+                {
+                    "pathMatch" : "/api/**",
+                    "extraParams" : [
+                      {
+                        "name":"timestamp",
+                        "required":"1",
+                        "example":"123",
+                        "desc":"时间戳"
+                      },
+                      {
+                        "name":"nonce",
+                        "required":"1",
+                        "example":"123",
+                        "desc":"随机长整型"
+                      },
+                      {
+                        "name":"signature",
+                        "required":"1",
+                        "example":"77B27281779BD60CAE952FA1232368D2",
+                        "desc":"签名"
+                      },
+                      {
+                        "name":"accessToken",
+                        "required":"1",
+                        "example":"5d622aea8221e150fcede59823e84e10",
+                        "desc":"访问令牌"
+                      }
+                    ]
+                }
+                """;
     }
+
+
 
     private State myState = new State();
 

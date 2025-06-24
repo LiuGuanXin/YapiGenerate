@@ -23,7 +23,7 @@ public class YapiGenerateActionMock extends AnAction {
 
     @Override
     public void actionPerformed(@NotNull AnActionEvent e) {
-        String result = ClassParse.getJsonResult(e, false, true);
+        String result = ClassParse.getJsonResult(e, "Object", true);
         sendMessageToWindows(e.getProject(), result);
 
     }

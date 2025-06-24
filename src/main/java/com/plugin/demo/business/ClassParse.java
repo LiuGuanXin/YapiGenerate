@@ -12,18 +12,18 @@ import com.intellij.openapi.editor.Editor;
 import com.intellij.openapi.project.Project;
 import com.intellij.psi.*;
 import com.intellij.psi.javadoc.PsiDocComment;
+import com.intellij.psi.javadoc.PsiDocTag;
 import com.intellij.psi.util.PsiTreeUtil;
 
 
 import com.plugin.demo.model.FieldInfo;
 import com.plugin.demo.model.FieldTypeInfo;
-
-
-import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.*;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
 
@@ -41,128 +41,44 @@ public class ClassParse {
     private static final String TYPE_INTEGER = "integer";
     private static final String TYPE_STRING = "string";
     private static final String TYPE_NUMBER = "number";
-    private static final String JSON_PREFIX = """
-            {
-            "message": "提示信息",\s
-            "status": 200,\s
-            "data": {}
-            }""";
 
-    private static final String PREFIX_SCHEMA = """
+
+    private static final String META_SCHEMA = """
             {
-                "$schema": "http://json-schema.org/draft-04/schema#",
-                "type": "object",
-                "properties": {
-                    "status": {
-                        "type": "number",
-                        "description": "响应码"
-                    },
-                    "message": {
-                        "type": "string",
-                        "description": "提示信息"
-                    },
-                    "data": {
-                        "type": "object",
-                        "description": "返回记录",
-                        "properties": {}
-                    }
-                }
+              "$schema": "http://json-schema.org/draft-04/schema#",
+              "type": "object"
             }
-            """;
+    """;
 
-
-    private static final String PREFIX_SCHEMA_LIST = """
+    public static final String META_SCHEMA_LIST = """
             {
-                    "$schema": "http://json-schema.org/draft-04/schema#",
-                    "type": "object",
-                    "properties": {
-                        "status": {
-                            "type": "number",
-                            "description": "响应码"
-                        },
-                        "message": {
-                            "type": "string",
-                            "description": "提示信息"
-                        },
-                        "data": {
-                            "type": "array",
-                            "description": "返回记录",
-                            "items": {
-                                "type": "object",
-                                "properties": {}
-                            }
-                        }
-                    }
-                }
-            """;
-
-
-    private static final String PREFIX_SCHEMA_PAGE = """
-			{
-			  "type":"object",
-			  "title":"empty object",
-			  "properties":{
-				"status":{
-				  "type":"integer",
-				  "description":"响应码"
-				},
-				"message":{
-				  "type":"string",
-				  "description":"提示信息"
-				},
-				"data":{
-				  "type":"object",
-				  "properties":{
-					"records":{
-					  "type":"array",
-					  "items":{
-						"type":"object",
-						"properties":{ },
-						"description":"空数据对象"
-					  },
-					  "description":"分页数据"
-					},
-					"total":{
-					  "type":"integer",
-					  "description":"总数据量"
-					},
-					"current":{
-					  "type":"integer",
-					  "description":"当前页"
-					},
-					"size":{
-					  "type":"integer",
-					  "description":"页面数据量"
-					}
-				  },
-				  "description":"数据"
-				}
-			  }
-			}
-            """;
+              "$schema": "http://json-schema.org/draft-04/schema#",
+              "type": "array",
+              "items": {
+                "type": "object",
+              }
+            }
+    """;
 
 
     /**
      * 根据传入的 AnActionEvent 对象和布尔值，获取一个包含字符串键和 JSONObject 值的映射。
      *
      * @param e      触发此方法的 AnActionEvent 对象，通常用于获取当前上下文信息。
-     * @param isList 布尔值，指示是否返回列表形式的 JSON 对象。
+     * @param type   指示是否返回列表形式的 JSON 对象。
      * @return 一个包含字符串键和 JSONObject 值的映射，其中每个 JSONObject 代表一个字段信息。
      */
-    public static String getJsonResult(AnActionEvent e, Boolean isList, Boolean getMockData) {
+    public static String getJsonResult(AnActionEvent e, String type, Boolean getMockData) {
         List<FieldInfo> fieldInfos = ClassParse.parseFieldsWithComments(e);
         JSONObject jsonObject = transToJson(fieldInfos);
-        Map<String, JSONObject> map = dealPrefix(jsonObject, isList, getMockData);
-        if (map.get("exception") != null) {
-            return map.get("exception").getString("exception");
-        }
+        Map<String, Object> map = parseDict(jsonObject);
         return "返回结果的json格式如下：\n" +
                 "```json\n" +
-                JSON.toJSONString(map.get("json"), SerializerFeature.PrettyFormat) +
+                JSON.toJSONString(map.get("commentDict"), SerializerFeature.PrettyFormat) +
                 "\n```\n" +
                 "返回元数据格式如下：\n" +
                 "```json\n" +
-                JSON.toJSONString(map.get("schema"), SerializerFeature.PrettyFormat) +
+                getJsonResultMeta(fieldInfos, type, getMockData) +
                 "\n```\n";
     }
 
@@ -175,164 +91,79 @@ public class ClassParse {
      */
     public static String getRequestBody(AnActionEvent e, Boolean getMockData) {
         List<FieldInfo> fieldInfos = ClassParse.parseFieldsWithComments(e);
-        JSONObject jsonObject = transToJson(fieldInfos);
-        Map<String, JSONObject> map = dealPrefix(jsonObject, false, getMockData);
-        if (map.get("exception") != null) {
-            return map.get("exception").getString("exception");
-        }
-        JSONObject schema = map.get("schema");
-        JSONObject result = schema.getJSONObject("properties")
-                .getJSONObject("data");
-        result.put("description", "根节点");
         return "返回元数据格式如下：\n" +
                 "```json\n" +
-                JSON.toJSONString(result, SerializerFeature.PrettyFormat) +
+                getRequestBodyMeta(fieldInfos, "Object", getMockData) +
                 "\n```\n";
     }
 
-
-    public static String getRequestBody(List<FieldInfo> fieldInfos, Boolean isList, Boolean getMockData) {
+    public static String getRequestBodyMeta(List<FieldInfo> fieldInfos, String type, Boolean getMockData) {
         JSONObject jsonObject = transToJson(fieldInfos);
-        Map<String, JSONObject> map = dealPrefix(jsonObject, isList, getMockData);
-        if (map.get("exception") != null) {
-            return map.get("exception").getString("exception");
-        }
-        JSONObject schema = map.get("schema");
-        JSONObject result = schema.getJSONObject("properties")
-                .getJSONObject("data");
-        result.put("description", "根节点");
-        return "返回元数据格式如下：\n" +
-                "```json\n" +
-                JSON.toJSONString(result, SerializerFeature.PrettyFormat) +
-                "\n```\n";
-    }
-
-    public static String getRequestBodyMeta(List<FieldInfo> fieldInfos, Boolean isList, Boolean getMockData) {
-        JSONObject jsonObject = transToJson(fieldInfos);
-        Map<String, JSONObject> map = dealPrefix(jsonObject, isList, getMockData);
-        if (map.get("exception") != null) {
-            return map.get("exception").getString("exception");
-        }
-        JSONObject schema = map.get("schema");
-        JSONObject result = schema.getJSONObject("properties")
-                .getJSONObject("data");
-        result.put("description", "根节点");
-        return JSON.toJSONString(result, SerializerFeature.PrettyFormat);
-    }
-
-    /**
-     * 处理前缀信息，将字段信息转换为json格式
-     * @param dataJson 字段信息json格式
-     * @param isList 布尔值，指示是否返回列表形式的 JSON 对象。
-     * @return json格式字符串
-     */
-    public static Map<String, JSONObject> dealPrefix(JSONObject dataJson, Boolean isList, Boolean getMockData) {
-        Map<String, Object> map = parseDict(dataJson);
-
-        JSONObject json = JSON.parseObject(JSON_PREFIX);
-        json.put("data", JSON.toJSON(map.get("commentDict")));
+        Map<String, Object> map = parseDict(jsonObject);
         JSONObject schema;
-        if (Boolean.TRUE.equals(isList)) {
-            schema = JSON.parseObject(PREFIX_SCHEMA_LIST);
-            schema.getJSONObject("properties")
-                    .getJSONObject("data")
-                    .getJSONObject("items")
+        if ("List".equals(type)) {
+            schema = JSON.parseObject(META_SCHEMA_LIST);
+            schema.getJSONObject("items")
                     .put("properties", JSON.toJSON(map.get("typeDict")));
         } else {
-            schema = JSON.parseObject(PREFIX_SCHEMA);
-            schema.getJSONObject("properties")
-                    .getJSONObject("data")
-                    .put("properties", JSON.toJSON(map.get("typeDict")));
+            schema = JSON.parseObject(META_SCHEMA);
+            schema.put("properties", JSON.toJSON(map.get("typeDict")));
         }
-        Map<String, JSONObject> rs = new HashMap<>(2);
-        rs.put("json", json);
         if (Boolean.TRUE.equals(getMockData)) {
-            JSONObject mockData = generateMockData(schema, isList);
-            if (mockData.getString("exception") != null) {
-                rs.put("exception", mockData);
-            }
-            System.out.println(JSON.toJSONString(mockData, SerializerFeature.PrettyFormat));
-            rs.put("schema", mockData);
-        } else {
-            rs.put("schema", schema);
+            schema = generateMockData(schema);
         }
-        return rs;
+        return JSON.toJSONString(schema, SerializerFeature.PrettyFormat);
     }
 
-
-    public static String getJsonResult(List<FieldInfo> fieldInfos, String type, Boolean getMockData) {
-        JSONObject jsonObject = transToJson(fieldInfos);
-        Map<String, JSONObject> map = dealPrefix(jsonObject, type, getMockData);
-        if (map.get("exception") != null) {
-            return map.get("exception").getString("exception");
-        }
-        return "返回结果的json格式如下：\n" +
-                "```json\n" +
-                JSON.toJSONString(map.get("json"), SerializerFeature.PrettyFormat) +
-                "\n```\n" +
-                "返回元数据格式如下：\n" +
-                "```json\n" +
-                JSON.toJSONString(map.get("schema"), SerializerFeature.PrettyFormat) +
-                "\n```\n";
-    }
 
     public static String getJsonResultMeta(List<FieldInfo> fieldInfos, String type, Boolean getMockData) {
         JSONObject jsonObject = transToJson(fieldInfos);
-        Map<String, JSONObject> map = dealPrefix(jsonObject, type, getMockData);
-        if (map.get("exception") != null) {
-            return map.get("exception").getString("exception");
-        }
-        return JSON.toJSONString(map.get("schema"), SerializerFeature.PrettyFormat);
-    }
-
-
-    public static Map<String, JSONObject> dealPrefix(JSONObject dataJson, String type, Boolean getMockData) {
-        Map<String, Object> map = parseDict(dataJson);
-
-        JSONObject json = JSON.parseObject(JSON_PREFIX);
-        json.put("data", JSON.toJSON(map.get("commentDict")));
+        dealDljdInfo(jsonObject);
+        Map<String, Object> map = parseDict(jsonObject);
         JSONObject schema;
-        if ("List".equals(type)) {
-            schema = JSON.parseObject(PREFIX_SCHEMA_LIST);
-            schema.getJSONObject("properties")
-                    .getJSONObject("data")
-                    .getJSONObject("items")
-                    .put("properties", JSON.toJSON(map.get("typeDict")));
-        } else if ("Page".equals(type)) {
-            schema = JSON.parseObject(PREFIX_SCHEMA_PAGE);
-            schema.getJSONObject("properties")
-                    .getJSONObject("data")
-                    .getJSONObject("properties")
-                    .getJSONObject("records")
-                    .getJSONObject("items")
-                    .put("properties", JSON.toJSON(map.get("typeDict")));
-        }else {
-            schema = JSON.parseObject(PREFIX_SCHEMA);
-            schema.getJSONObject("properties")
-                    .getJSONObject("data")
-                    .put("properties", JSON.toJSON(map.get("typeDict")));
-        }
-        Map<String, JSONObject> rs = new HashMap<>(2);
-        rs.put("json", json);
-        if (Boolean.TRUE.equals(getMockData)) {
-            JSONObject mockData = generateMockData(schema, type);
-            if (mockData.getString("exception") != null) {
-                rs.put("exception", mockData);
-            }
-            rs.put("schema", mockData);
+        if ("Object".equals(type)) {
+            schema = JSON.parseObject(META_SCHEMA);
+            schema.put("properties", JSON.toJSON(map.get("typeDict")));
+        } else  if ("List".equals(type)) {
+            schema = JSON.parseObject(META_SCHEMA_LIST);
+            schema.getJSONObject("items").put("properties", JSON.toJSON(map.get("typeDict")));
         } else {
-            rs.put("schema", schema);
+            schema = (JSONObject) JSON.toJSON(map.get("typeDict"));
         }
-        return rs;
+        if (Boolean.TRUE.equals(getMockData)) {
+            schema = generateMockData(schema);
+        }
+        return JSON.toJSONString(schema, SerializerFeature.PrettyFormat);
     }
 
-    private static JSONObject generateMockData(JSONObject jsonSchema, String type) {
-        String convertData = schema2jsonTypeAndDesc(jsonSchema);
-        if (isJson(convertData)) {
-            return new JSONObject();
+
+
+    private static void dealDljdInfo(JSONObject jsonObject) {
+        if (jsonObject.getJSONObject("status") != null) {
+            jsonObject.getJSONObject("status").put("description", "响应码");
         }
+        if (jsonObject.getJSONObject("message") != null) {
+            jsonObject.getJSONObject("message").put("description", "提示信息");
+
+        }
+        if (jsonObject.getJSONObject("data") != null
+                && jsonObject.getJSONObject("data").getJSONObject("properties") != null ) {
+            jsonObject.getJSONObject("data").put("description", "返回记录");
+            if (jsonObject.getJSONObject("data").getJSONObject("properties").getJSONObject("total") != null
+                    && jsonObject.getJSONObject("data").getJSONObject("properties").getJSONObject("current") != null
+                    && jsonObject.getJSONObject("data").getJSONObject("properties").getJSONObject("size") != null ) {
+                jsonObject.getJSONObject("data").getJSONObject("properties").getJSONObject("total").put("description", "总数");
+                jsonObject.getJSONObject("data").getJSONObject("properties").getJSONObject("current").put("description", "当前页");
+                jsonObject.getJSONObject("data").getJSONObject("properties").getJSONObject("size").put("description", "数量");
+
+            }
+        }
+    }
+
+
+    private static JSONObject generateMockData(JSONObject jsonSchema) {
+        String mock = GenerateMockData.generateMock(JSON.toJSONString(jsonSchema));
         JSONObject object = new JSONObject();
-        String mock = GenerateMockData.generateMock(convertData);
         if ("1".equals(mock)) {
             object.put("exception", "apikey为空，请填写智谱apikey");
             return object;
@@ -343,26 +174,11 @@ public class ClassParse {
         mock = mock.replaceAll("```json", "");
         mock = mock.replaceAll("```", "");
         if (isJson(mock)) {
-            return new JSONObject();
+            return object;
         }
-        jsonSchemaConverter(jsonSchema, mockToMap(mock, type), "");
-        return jsonSchema;
+        object = JSON.parseObject(mock);
+        return object;
     }
-
-    private static Map<String, Object> mockToMap(String mockJson, String type) {
-        JSONObject jsonObject = JSON.parseObject(mockJson);
-        if ("List".equals(type)) {
-            JSONArray data = jsonObject.getJSONArray("data");
-            jsonObject.put("data", data.getJSONObject(0));
-        } if ("Page".equals(type)) {
-            JSONArray data = jsonObject.getJSONObject("data").getJSONArray("records");
-            jsonObject.getJSONObject("data").put("records", data.getJSONObject(0));
-        }
-        Map<String, Object> resultMap = new HashMap<>(10);
-        flattenJson(jsonObject, "", resultMap);
-        return resultMap;
-    }
-
 
     /**
      * 将字段信息转换为json格式
@@ -617,6 +433,77 @@ public class ClassParse {
     }
 
     /**
+     * 解析类中的所有字段及其注释，并返回一个包含字段信息的列表。
+     *
+     * @param psiClass 需要解析的psiClass对象
+	 * @param substitutor 需要解析的substitutor对象
+     * @return 包含字段信息的列表，如果psiClass为null，则返回一个空列表
+     */
+	public static List<FieldInfo> parseFieldsWithComments(PsiClass psiClass, PsiSubstitutor substitutor) {
+		if (psiClass == null) {
+			return new ArrayList<>();
+		}
+		List<FieldInfo> fieldInfos = new ArrayList<>();
+
+		for (PsiField field : psiClass.getFields()) {
+			String fieldName = field.getName();
+			if ("serialVersionUID".equals(fieldName)) {
+				continue;
+			}
+
+			PsiType fieldType = field.getType();
+
+			// 如果字段是泛型类型 T/U 等，替换为实际类型
+			if (substitutor != null) {
+				PsiType substituted = substitutor.substitute(fieldType);
+				if (substituted != null && substituted != fieldType) {
+					fieldType = substituted;
+				}
+			}
+
+			FieldInfo fieldInfo = new FieldInfo();
+			fieldInfo.setName(fieldName);
+			fieldInfo.setType(fieldType.getPresentableText());
+			fieldInfo.setDescription(getCommentText(field));
+
+			// 如果字段是自定义对象类型
+			if (isCustomType(fieldType) && fieldType instanceof PsiClassType) {
+				PsiClassType classType = (PsiClassType) fieldType;
+				PsiClass psiClassType = classType.resolve();
+				PsiSubstitutor nestedSubstitutor = classType.resolveGenerics().getSubstitutor();
+
+				if (psiClassType != null && psiClassType != psiClass) {
+					fieldInfo.setType("object");
+					fieldInfo.setProperties(parseFieldsWithComments(psiClassType, nestedSubstitutor));
+				}
+			}
+
+			// 如果字段是 List<T> 这种类型
+			if (fieldType instanceof PsiClassType) {
+				PsiClassType classType = (PsiClassType) fieldType;
+				PsiClass resolvedClass = classType.resolve();
+				if (resolvedClass != null && "java.util.List".equals(resolvedClass.getQualifiedName())) {
+					PsiType[] generics = classType.getParameters();
+					if (generics.length > 0 && generics[0] instanceof PsiClassType) {
+						PsiClass genericClass = ((PsiClassType) generics[0]).resolve();
+						if (genericClass != null && isCustomType(generics[0]) && genericClass != psiClass) {
+							fieldInfo.setType("array");
+
+							PsiSubstitutor nestedSubstitutor = ((PsiClassType) generics[0]).resolveGenerics().getSubstitutor();
+							fieldInfo.setProperties(parseFieldsWithComments(genericClass, nestedSubstitutor));
+						}
+					}
+				}
+			}
+
+			fieldInfos.add(fieldInfo);
+		}
+
+		return fieldInfos;
+	}
+
+
+    /**
      * 获取字段注释文本
      * @param field 字段对象
      * @return 注释文本，如果没有则返回空字符串
@@ -706,108 +593,6 @@ public class ClassParse {
         return false;
     }
 
-    private static JSONObject generateMockData(JSONObject jsonSchema, Boolean isList) {
-        String convertData = schema2jsonTypeAndDesc(jsonSchema);
-        if (isJson(convertData)) {
-            return new JSONObject();
-        }
-        JSONObject object = new JSONObject();
-        String mock = GenerateMockData.generateMock(convertData);
-        if ("1".equals(mock)) {
-            object.put("exception", "apikey为空，请填写智谱apikey");
-            return object;
-        } else if ("2".equals(mock)) {
-            object.put("exception", "apikey错误，请检查");
-            return object;
-        }
-        mock = mock.replaceAll("```json", "");
-        mock = mock.replaceAll("```", "");
-        if (isJson(mock)) {
-            return new JSONObject();
-        }
-        jsonSchemaConverter(jsonSchema, mockToMap(mock, isList), "");
-        return jsonSchema;
-    }
-
-    private static Map<String, Object> mockToMap(String mockJson, Boolean isList) {
-        JSONObject jsonObject = JSON.parseObject(mockJson);
-        if (Boolean.TRUE.equals(isList)) {
-            JSONArray data = jsonObject.getJSONArray("data");
-            jsonObject.put("data", data.getJSONObject(0));
-        }
-        Map<String, Object> resultMap = new HashMap<>(10);
-        flattenJson(jsonObject, "", resultMap);
-        return resultMap;
-    }
-
-    /**
-     * 将嵌套的JSON对象扁平化并存储到Map中。
-     *
-     * @param jsonObject JSON对象
-     * @param prefix 当前节点的前缀，用于构建键名
-     * @param resultMap 存储扁平化后的键值对的Map
-     */
-    private static void flattenJson(JSONObject jsonObject, String prefix, Map<String, Object> resultMap) {
-        if (jsonObject == null || resultMap == null) {
-            return;
-        }
-
-        for (Map.Entry<String, Object> entry : jsonObject.entrySet()) {
-            String key = entry.getKey();
-            Object value = entry.getValue();
-            String newKey = prefix.isEmpty() ? key : prefix + "." + key;
-
-            if (value == null) {
-                resultMap.put(newKey, null);
-            } else if (value instanceof JSONObject) {
-                flattenJson((JSONObject) value, newKey, resultMap);
-            } else if (value instanceof JSONArray array) {
-                for (int i = 0; i < array.size(); i++) {
-                    Object item = array.get(i);
-                    if (item instanceof JSONObject) {
-                        flattenJson((JSONObject) item, newKey + "[" + i + "]", resultMap);
-                    } else {
-                        resultMap.put(newKey + "[" + i + "]", item);
-                    }
-                }
-            } else {
-                resultMap.put(newKey, value);
-            }
-        }
-    }
-
-
-    /**
-     * 数据转换
-     * @param schema schema json
-     * @param mockMap mock json
-     */
-    public static void jsonSchemaConverter(JSONObject schema, Map<String, Object> mockMap, String prefix) {
-        if (schema == null || mockMap == null) {
-            return;
-        }
-        JSONObject properties = schema.getJSONObject("properties");
-        if (properties == null) {
-            return;
-        }
-        for (String key : properties.keySet()) {
-            String prefixNext = prefix.isEmpty() ? key : prefix + "." + key;
-            JSONObject property = properties.getJSONObject(key);
-            if (mockMap.containsKey(prefixNext)) {
-                JSONObject mock = new JSONObject();
-                mock.put("mock", mockMap.get(prefixNext));
-                property.put("mock", mock);
-            }
-            if ("object".equals(property.getString("type"))) {
-                jsonSchemaConverter(property, mockMap, prefixNext);
-            } else if ("array".equals(property.getString("type"))) {
-                jsonSchemaConverter(property.getJSONObject("items"), mockMap, prefixNext);
-            }
-            properties.put(key, property);
-        }
-        schema.put("properties", properties);
-    }
-
     /**
      * 判断给定的字符串是否为非法的JSON格式。
      *
@@ -825,51 +610,339 @@ public class ClassParse {
         }
     }
 
-    /**
-     * 将 JSON Schema 转换为 JSON 字符串
-     *
-     * @param schemaJson 包含 Schema 信息的 JSONObject 对象
-     * @return 转换后的 JSON 字符串
-     */
-    private static String schema2jsonTypeAndDesc(JSONObject schemaJson) {
-        JSONObject object = generateJsonDataTypeAndDesc(schemaJson);
-        if (object.isEmpty()) {
-            return "{}";
-        }
-        return object.toJSONString();
-    }
+    public static Map<String, Object> getParams(PsiMethod psiMethod, Map<String, String> methodMap, Boolean mock) {
+		Map<String, Object> map = new HashMap<>(2);
+		// 获取参数  如果仅有一个参数且该参数为自定义对象，则需要生成请求体参数
+		PsiParameter[] parameter = psiMethod.getParameterList().getParameters();
+		String body = "";
+		// 请求体的请求
+		if (!isGetMapping(psiMethod)) {
+			for (PsiParameter psiParameter: parameter) {
+				if (ClassParse.isCustomType(psiParameter.getType())) {
+                    PsiType fieldType = psiParameter.getType();
+                    PsiClassType classType = (PsiClassType) fieldType;
+					body = getBody(classType, mock);
+				}
+			}
+		}
+		// 获取 注释中的参数备注
+		Map<String, String> paramComments = getParamComments(psiMethod);
+		List<JSONObject> pathVariable = new ArrayList<>();
+        if (methodMap.get("path") != null) {
+            List<String> pathParams = extractPathParams(methodMap.get("path"));
+            if (!pathParams.isEmpty()) {
+                // 处理路径参数
+                for (String param : pathParams) {
+                    JSONObject object = new JSONObject();
+                    object.put("name", param);
+                    object.put("desc", paramComments.getOrDefault(param, ""));
+                    pathVariable.add(object);
+                }
+                map.put("pathVariable", pathVariable);
 
-    /**
-     * 根据 JSON Schema 生成 JSON 数据
-     *
-     * @param schema 包含 Schema 信息的 JSONObject 对象
-     * @return 根据 Schema 生成的 JSON 数据
-     */
-    private static JSONObject generateJsonDataTypeAndDesc(JSONObject schema) {
-        JSONObject result = new JSONObject();
-        JSONObject properties = schema.getJSONObject("properties");
-        if (properties == null) {
-            return result;
-        }
-        for (String key : properties.keySet()) {
-            JSONObject property = properties.getJSONObject(key);
-            String type = property.getString("type");
-            result.put(key, StringUtils.isNotEmpty(type) ? type : "");
-            String desc = property.getString("description");
-            result.put(key, StringUtils.isNotEmpty(desc) ? desc : "");
-            JSONObject values = new JSONObject();
-            values.put("type", StringUtils.isNotEmpty(type) ? type : "");
-            values.put("description", StringUtils.isNotEmpty(desc) ? desc : "");
-            result.put(key, values);
-            if ("object".equals(property.getString("type"))) {
-                result.put(key, generateJsonDataTypeAndDesc(property));
-            } else if ("array".equals(property.getString("type"))) {
-                JSONArray array = new JSONArray();
-                JSONObject itemSchema = property.getJSONObject("items");
-                array.add(generateJsonDataTypeAndDesc(itemSchema));
-                result.put(key, array);
             }
         }
-        return result;
+
+		if (isGetMapping(psiMethod)) {
+			JSONArray params = getRequestParam(parameter, paramComments, mock);
+			map.put("params", params);
+		}
+        if (!body.isEmpty()) {
+			map.put("body", body);
+        }
+        // 获取返回值
+        if (psiMethod.getReturnType() != null) {
+			PsiClassType classType = (PsiClassType) psiMethod.getReturnType();
+			PsiClass psiClassType = classType.resolve();
+			if (psiClassType == null) {
+				return map;
+			}
+			String resultResult = getReturn(classType, psiClassType, mock);
+            if (!resultResult.isEmpty()) {
+				map.put("return", resultResult);
+            }
+        }
+        return map;
     }
+
+	public static List<String> extractPathParams(String url) {
+		List<String> params = new ArrayList<>();
+		Pattern pattern = Pattern.compile("\\{(\\w+)}");
+		Matcher matcher = pattern.matcher(url);
+
+		while (matcher.find()) {
+			params.add(matcher.group(1));
+		}
+		return params;
+	}
+
+	private static JSONArray getRequestParam(PsiParameter[] parameter, Map<String, String> paramComments, Boolean mock) {
+		JSONArray jsonArray = new JSONArray();
+		outer:
+		for (PsiParameter psiParameter: parameter) {
+			// 1. 排除注解为路径参数的参数
+			PsiAnnotation[] annotations = psiParameter.getAnnotations();
+			for (PsiAnnotation annotation : annotations) {
+				if (Objects.requireNonNull(annotation.getQualifiedName()).contains("PathVariable")) {
+					continue outer;
+				}
+			}
+			// 2. 如果是基本类型，直接添加
+			if (!ClassParse.isCustomType(psiParameter.getType())) {
+				JSONObject jsonObject = new JSONObject();
+				jsonObject.put("name", psiParameter.getName());
+				jsonObject.put("required", "1");
+				jsonObject.put("example", "");
+				jsonObject.put("desc", paramComments.getOrDefault(psiParameter.getName(), ""));
+				jsonArray.add(jsonObject);
+			} else if (psiParameter.getType().getPresentableText().startsWith("Page<")) {
+				JSONObject jsonObject = new JSONObject();
+				jsonObject.put("name", "current");
+				jsonObject.put("required", "0");
+				jsonObject.put("example", "1");
+				jsonObject.put("desc", "当前页");
+				jsonArray.add(jsonObject);
+				JSONObject jsonObject1 = new JSONObject();
+				jsonObject1.put("name", "size");
+				jsonObject1.put("required", "0");
+				jsonObject1.put("example", "10");
+				jsonObject1.put("desc", "每页数量");
+				jsonArray.add(jsonObject1);
+			} else if (ClassParse.isCustomType(psiParameter.getType())) {
+				// 3. 如果是自定义对象类型， 解析后添加
+				// 1. 遍历类的所有字段
+				PsiClassType  psiClassType = (PsiClassType) psiParameter.getType();
+				PsiClass psiClass = psiClassType.resolve();
+				List<FieldInfo> fieldInfos = ClassParse.parseFieldsWithComments(psiClass);
+				for (FieldInfo fieldInfo : fieldInfos) {
+					// 不处理对象类型和列表类型
+					if (!"object".equals(fieldInfo.getType())
+							&& !"array".equals(fieldInfo.getType())) {
+						JSONObject jsonObject = new JSONObject();
+						jsonObject.put("name", fieldInfo.getName());
+						jsonObject.put("required", "0");
+						jsonObject.put("example", "");
+						jsonObject.put("desc", fieldInfo.getDescription());
+						jsonArray.add(jsonObject);
+					}
+				}
+			}
+		}
+		if (mock) {
+			// 生成描述
+			Map<String, String> nameMap = new HashMap<>(10);
+			for (Object o : jsonArray) {
+				JSONObject object = (JSONObject) o;
+				if ((object.getString("desc")).isEmpty()) {
+					nameMap.put(object.getString("name"), "");
+				}
+			}
+			// 生成mock数据
+			String result = GenerateMockData.generateDesc(JSON.toJSONString(nameMap));
+			result = result.replace("```json", "");
+			result = result.replace("```", "");
+			JSONObject jsonObject = JSON.parseObject(result);
+			Map<String, String> descMap = new HashMap<>(10);
+			for (Object o : jsonArray) {
+				JSONObject object = (JSONObject) o;
+				if ((object.getString("desc")).isEmpty()) {
+					((JSONObject) o).put("desc", jsonObject.getString(object.getString("name")));
+				}
+				descMap.put(object.getString("name"), object.getString("desc"));
+			}
+			String mockData = GenerateMockData.generateRequestParamsMock(JSON.toJSONString(descMap));
+			mockData = mockData.replace("```json", "");
+			mockData = mockData.replace("```", "");
+			JSONObject mockJsonObject = JSON.parseObject(mockData);
+			for (Object o : jsonArray) {
+				((JSONObject) o).put("example", mockJsonObject.getString(((JSONObject) o).getString("name")));
+			}
+		}
+		return jsonArray;
+	}
+
+	private static Map<String, String> getParamComments(PsiMethod psiMethod) {
+		Map<String, String> paramCommentMap = new HashMap<>();
+
+		PsiDocComment docComment = psiMethod.getDocComment();
+		if (docComment != null) {
+			for (PsiDocTag docTag : docComment.findTagsByName("param")) {
+				PsiElement[] dataElements = docTag.getDataElements();
+				if (dataElements.length > 0) {
+					String paramName = dataElements[0].getText();
+					// 获取 @param 标签之后的文本内容作为注释
+					String commentText = docTag.getText().replaceFirst("@param\\s+" + paramName, "").trim();
+					commentText = commentText.replace("\n", "");
+					commentText = commentText.replace("*", "").trim();
+					paramCommentMap.put(paramName, commentText);
+				}
+			}
+		}
+
+		return paramCommentMap;
+	}
+
+
+
+
+	private static String getBody(PsiClassType classType, Boolean mock) {
+		List<FieldInfo> fieldInfos;
+		String body = "";
+		PsiClass psiClassType = classType.resolve();
+		if (CommonClassNames.JAVA_UTIL_LIST.equals(psiClassType.getQualifiedName())) {
+			PsiType[] parameters = classType.getParameters();
+			if (parameters.length == 1 && parameters[0] instanceof PsiClassType) {
+				PsiClass elementClass = ((PsiClassType) parameters[0]).resolve();
+				if (elementClass != null) {
+					fieldInfos = ClassParse.parseFieldsWithComments(elementClass);
+					body = ClassParse.getRequestBodyMeta(fieldInfos, "List", mock);
+
+				}
+			}
+		} else if (ClassParse.isCustomType(classType))  {
+			fieldInfos = ClassParse.parseFieldsWithComments(psiClassType);
+			body = ClassParse.getRequestBodyMeta(fieldInfos, "Object", mock);
+		}
+		return body;
+	}
+
+	private static String getReturn(PsiClassType classType, PsiClass psiClass, Boolean mock) {
+		// 获取实际的泛型类型替换信息
+		PsiClassType.ClassResolveResult classResolveResult = classType.resolveGenerics();
+		PsiSubstitutor substitutor = classResolveResult.getSubstitutor();
+        String resultResult = "";
+
+		if (ClassParse.isCustomType(classType)) {
+			// 如果是对象类型
+			// 解析返回值
+			List<FieldInfo> returnObjList = ClassParse.parseFieldsWithComments(psiClass, substitutor);
+			resultResult = ClassParse.getJsonResultMeta(returnObjList, "Object", mock);
+		} else if (Objects.requireNonNull(psiClass.getQualifiedName()).startsWith("java.lang.")) {
+			// 如果是基本数据类型
+			String type = ClassParse.typeTransform(psiClass.getQualifiedName()
+					.substring(psiClass.getQualifiedName().lastIndexOf('.') + 1));
+			JSONObject jsonObject = new JSONObject();
+			jsonObject.put("type", type);
+			resultResult = JSON.toJSONString(jsonObject);
+		} else if (Objects.requireNonNull(psiClass.getQualifiedName()).startsWith("java.util.List") ||
+				Objects.requireNonNull(psiClass.getQualifiedName()).startsWith("java.util.Set")) {
+			// 如果是列表类型
+			// 获取列表的泛型参数
+			PsiType substituted = substitutor.substitute(classType);
+			PsiClassType psiClassType = (PsiClassType) substituted;
+			PsiClass subPsiClass = psiClassType.resolve();
+			if (subPsiClass != null && ClassParse.isCustomType(psiClassType)) {
+				List<FieldInfo> returnObjList = ClassParse.parseFieldsWithComments(subPsiClass, substitutor);
+				resultResult = ClassParse.getJsonResultMeta(returnObjList, "List", mock);
+			} else if (subPsiClass != null) {
+				PsiType[] generics = classType.getParameters();
+				if (generics.length > 0 && generics[0] instanceof PsiClassType) {
+					PsiClass genericClass = ((PsiClassType) generics[0]).resolve();
+					String type = ClassParse.typeTransform(genericClass.getQualifiedName()
+							.substring(genericClass.getQualifiedName().lastIndexOf('.') + 1));
+					JSONObject schema = JSON.parseObject(ClassParse.META_SCHEMA_LIST);
+					schema.getJSONObject("items").put("type",type);
+					resultResult = JSON.toJSONString(schema, SerializerFeature.PrettyFormat);
+				}
+			}
+		} else {
+			// 如果是MAP类型 不处理
+		}
+		return resultResult;
+	}
+
+    private static boolean isGetMapping(PsiMethod method) {
+        // 检查方法注解
+        for (PsiAnnotation annotation : method.getAnnotations()) {
+            String qualifiedName = annotation.getQualifiedName();
+            if (qualifiedName != null && qualifiedName.contains("GetMapping")) {
+                return true;
+            }
+        }
+        return false;
+    }
+	
+	public static Map<String, String> getUrlPath(PsiMethod psiMethod) {
+		Map<String, String> map = new HashMap<>(2);
+		PsiClass containingClass = psiMethod.getContainingClass();
+		String classPath = "";
+
+		// 获取类上的 @RequestMapping 注解路径
+		if (containingClass != null) {
+			for (PsiAnnotation annotation : containingClass.getAnnotations()) {
+				String qualifiedName = annotation.getQualifiedName();
+				if (qualifiedName != null && qualifiedName.endsWith("RequestMapping")) {
+					classPath = getAnnotationValue(annotation);
+					break;
+				}
+			}
+		}
+
+		// 获取方法上的注解和路径
+		for (PsiAnnotation annotation : psiMethod.getAnnotations()) {
+			String qualifiedName = annotation.getQualifiedName();
+			if (qualifiedName == null) continue;
+
+			String method = null;
+			if (qualifiedName.contains("GetMapping")) {
+				method = "GET";
+			} else if (qualifiedName.contains("PostMapping")) {
+				method = "POST";
+			} else if (qualifiedName.contains("PutMapping")) {
+				method = "PUT";
+			} else if (qualifiedName.contains("DeleteMapping")) {
+				method = "DELETE";
+			} else if (qualifiedName.contains("RequestMapping")) {
+				// 判断 method 属性
+				PsiAnnotationMemberValue methodValue = annotation.findDeclaredAttributeValue("method");
+				if (methodValue != null) {
+					String text = methodValue.getText();
+					if (text.contains("GET")) method = "GET";
+					else if (text.contains("POST")) method = "POST";
+					else if (text.contains("PUT")) method = "PUT";
+					else if (text.contains("DELETE")) method = "DELETE";
+				}
+			}
+
+			if (method != null) {
+				String methodPath = getAnnotationValue(annotation);
+				String fullPath = joinPaths(classPath, methodPath);
+				map.put("method", method);
+				map.put("path", fullPath);
+				break;
+			}
+		}
+
+		return map;
+	}
+
+	/**
+	 * 提取注解中的路径值（value 或 path）
+	 */
+	private static String getAnnotationValue(PsiAnnotation annotation) {
+		PsiAnnotationMemberValue value = annotation.findDeclaredAttributeValue("value");
+		if (value == null) {
+			value = annotation.findDeclaredAttributeValue("path");
+		}
+		if (value != null) {
+			String text = value.getText();
+			// 去掉双引号
+			if (text.startsWith("\"") && text.endsWith("\"")) {
+				return text.substring(1, text.length() - 1);
+			}
+			return text;
+		}
+		return "";
+	}
+
+	/**
+	 * 拼接路径，处理多余的 /
+	 */
+	private static String joinPaths(String basePath, String subPath) {
+		if (basePath == null) basePath = "";
+		if (subPath == null) subPath = "";
+		String full = ("/" + basePath + "/" + subPath).replaceAll("/+", "/");
+		return full.endsWith("/") && full.length() > 1 ? full.substring(0, full.length() - 1) : full;
+	}
+
 }

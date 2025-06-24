@@ -1,10 +1,13 @@
 package com.plugin.demo.setting;
 
 import com.intellij.ui.components.JBLabel;
+import com.intellij.ui.components.JBScrollPane;
+import com.intellij.ui.components.JBTextArea;
 import com.intellij.ui.components.JBTextField;
 import com.intellij.util.ui.FormBuilder;
 
 import javax.swing.*;
+import java.awt.*;
 import java.util.Objects;
 
 
@@ -27,7 +30,8 @@ public class CodeChronoSettingsComponent {
     private final JBTextField projectName = new JBTextField();
     private final JBTextField categoryName = new JBTextField();
     private final JBTextField url = new JBTextField();
-
+    private final JBTextArea jsonTextArea = new JBTextArea();
+    private JBScrollPane scrollPane;
     private final ButtonGroup group = new ButtonGroup();
 
 
@@ -35,6 +39,7 @@ public class CodeChronoSettingsComponent {
         initUIComponents();
         addListeners();
         mainPanel = getMainPanel();
+
     }
 
     /**
@@ -61,6 +66,7 @@ public class CodeChronoSettingsComponent {
         groupName.setText(state.groupName);
         projectName.setText(state.projectName);
         categoryName.setText(state.categoryName);
+        jsonTextArea.setText(state.jsonText);
 
         if (state.type == 0) {
             group.setSelected(zhipuButton.getModel(), true);
@@ -82,6 +88,7 @@ public class CodeChronoSettingsComponent {
         state.groupName = groupName.getText();
         state.projectName = projectName.getText();
         state.categoryName = categoryName.getText();
+        state.jsonText = jsonTextArea.getText();
         CodeChronoSettings.getInstance().loadState(state);
 
     }
@@ -110,6 +117,7 @@ public class CodeChronoSettingsComponent {
                 && (Objects.equals(groupName.getText(), ""))
                 && (Objects.equals(projectName.getText(), ""))
                 && (Objects.equals(categoryName.getText(), ""))
+                && (Objects.equals(jsonTextArea.getText(), ""))
         )
         ) {
             return true;
@@ -121,6 +129,17 @@ public class CodeChronoSettingsComponent {
      * 初始化组件样式
      */
     private void initUIComponents() {
+        jsonTextArea.setLineWrap(true);
+        jsonTextArea.setWrapStyleWord(true);
+        jsonTextArea.setFont(new Font("Monospaced", Font.PLAIN, 12));
+        jsonTextArea.setBorder(BorderFactory.createLineBorder(Color.GRAY));
+        jsonTextArea.setText("{\n    \"key\": \"value\"\n}");
+        scrollPane = new JBScrollPane(
+                jsonTextArea,
+                ScrollPaneConstants.VERTICAL_SCROLLBAR_AS_NEEDED,
+                ScrollPaneConstants.HORIZONTAL_SCROLLBAR_AS_NEEDED
+        );
+        scrollPane.setPreferredSize(new Dimension(600, 500));
         zhipuAkiKeyText.setToolTipText("请输入智谱的apikey");
         aLiAkiKeyText.setToolTipText("请输入阿里云的apikey");
         zhipuModelNameText.setToolTipText("请输入智谱的模型名称");
@@ -150,6 +169,7 @@ public class CodeChronoSettingsComponent {
                 .addLabeledComponent(new JBLabel("项目组名称："), groupName, 1, false)
                 .addLabeledComponent(new JBLabel("项目名称："), projectName, 1, false)
                 .addLabeledComponent(new JBLabel("类别名称："), categoryName, 1, false)
+                .addLabeledComponent(new JBLabel("自定义附加参数："), scrollPane, 1, false)
                 .addComponentFillVertically(new JPanel(), 0)
                 .getPanel();
     }

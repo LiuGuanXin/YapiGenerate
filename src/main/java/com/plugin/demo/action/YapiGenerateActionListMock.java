@@ -24,7 +24,7 @@ public class YapiGenerateActionListMock extends AnAction {
     @Override
     public void actionPerformed(@NotNull AnActionEvent e) {
 
-        String result = ClassParse.getJsonResult(e, true, true);
+        String result = ClassParse.getJsonResult(e, "List", true);
         sendMessageToWindows(e.getProject(), result);
 
     }

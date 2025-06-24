@@ -27,32 +27,34 @@ public class GenerateMockData {
 
 
     private static final String PROMPT = """
-            我会给你一段json，这个json的包含字段和和字段的类型，
-            key为字段名称，value为字段的类型。你需要根据字段名称和类型在josn中
-            为每个字段添加属性填写模拟数据，使用模拟数据替换掉原来的类型
-            （注意是在原有的json上替换掉后面的类型而不是新加一个类型字段type来填充数据），
-            你需要十分注意生成模拟数据的类型和给出的类型是否一致。
-            不要更改json的其他内容，你只需要替换模拟数据。模拟数据需要接近真实的情况，
+            你是一个 JSON Schema 模拟数据生成器。请根据以下符合 draft-04 标准的 JSON Schema，为每个字段添加 "mock" 字段，
+            模拟出一个符合字段含义和数据类型的合理示例值。
+            "mock" 字段需添加在 "description" 和 "type" 同级的位置,
+            你要特别注意，加载同级的mock数据是这样的格式，是有两层的，
+            "mock": {
+                  "mock": "xxxx"
+            }。
+            不要更改json的其他内容，你只需增加模拟数据。模拟数据需要接近真实的情况，
             id相关字段为uuid（没有-相连），realName是中国人的名字，message使用success、status为0。
             如果存在identificationCode字段它的格式格式例如：
             88.163.12/3010012213405MA3D2XXA202106000008。
+            只输出添加了 mock 字段的完整 JSON Schema。
             示例：
             {
-              "data":{
-                "realName":"string",
-                "password":"string"
-              },
-              "message":"string",
-              "status":"number"
+              "userName": {
+                "description": "用户名",
+                "type": "string"
+              }
             }
             转换为：
             {
-              "data":{
-                "realName":"李煜",
-                "password":"nantang666"
-              },
-              "message":"success",
-              "status": 0
+              "userName": {
+                "description": "用户名",
+                "mock": {
+                  "mock": "张伟"
+                },
+                "type": "string"
+              }
             }
             你只需要返回json的内容，不需要返回其他一切内容。json内容如下：""";
 

@@ -6,15 +6,16 @@ import cn.hutool.http.HttpResponse;
 import com.alibaba.fastjson.JSON;
 import com.alibaba.fastjson.JSONArray;
 import com.alibaba.fastjson.JSONObject;
+import com.github.weisj.jsvg.J;
 import com.plugin.demo.setting.CodeChronoSettings;
+import org.apache.commons.io.FilenameUtils;
 import org.apache.commons.lang3.StringUtils;
 
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
+
 
 /**
  * @author Liu Guangxin
@@ -24,7 +25,7 @@ public class YapiInterface {
     private static String cookie;
     private static String userName;
     private static String password;
-    private static final Integer TIMEOUT = 5 * 1000;
+    private static final Integer TIMEOUT = 10 * 1000;
     public static String getToken() {
         CodeChronoSettings.State state = CodeChronoSettings.getInstance().getState();
         assert state != null;
@@ -221,15 +222,38 @@ public class YapiInterface {
 
     }
 
-    public static String updateInterface(String id, String catId, String methodName,
+    public static Map<String, String> updateInterface(String id, String catId, String methodName,
                                          String path, String body, String returnResult,
-                                         JSONArray params, List<JSONObject> pathVariable,String title) {
+                                         JSONArray params, List<JSONObject> pathVariable, String title) {
+        Map<String, String> map = new HashMap<>(2);
         CodeChronoSettings.State state = CodeChronoSettings.getInstance().getState();
         assert state != null;
         String url = state.url + "/api/interface/up";
         JSONObject jsonObject = new JSONObject();
+
         if ("GET".equals(methodName)) {
             jsonObject.put("req_query", params);
+        }
+        // 处理额外参数配置
+        JSONObject extraParamConf;
+        String matchUrl;
+        try {
+            extraParamConf = JSON.parseObject(state.jsonText);
+            matchUrl = extraParamConf.getString("pathMatch");
+            if (FilenameUtils.wildcardMatch(path, matchUrl)) {
+                String extraParams = extraParamConf.getString("extraParams");
+                JSONArray jsonArray = JSON.parseArray(extraParams);
+                if (ObjectUtil.isNotNull(jsonArray)) {
+                    if (ObjectUtil.isNotNull(jsonObject.getJSONArray("req_query"))) {
+                        jsonObject.getJSONArray("req_query").addAll(jsonArray);
+                    } else {
+                        jsonObject.put("req_query", jsonArray);
+                    }
+                }
+            }
+        } catch (Exception e) {
+            map.put("errorMsg", "额外参数解析错误");
+            return map;
         }
         jsonObject.put("api_opened", false);
         jsonObject.put("catid", catId);
@@ -264,16 +288,17 @@ public class YapiInterface {
         String jsonBodyStr = JSON.toJSONString(jsonObject);
         String jsonStr = HttpRequest.post(url)
                 .header("content-type", "application/json;charset=UTF-8")
-                .header("cookie", getCookie())
+                .header("cookie", getToken())
                 .timeout(TIMEOUT)
                 .body(jsonBodyStr)
                 .execute()
                 .body();
         JSONObject object = JSON.parseObject(jsonStr);
         if (0 == (int) object.get("errcode")) {
-            return "success";
+            return map;
         } else {
-            return "fail";
+            map.put("errorMsg", object.getString("errmsg"));
+            return map;
         }
     }
 

@@ -79,7 +79,7 @@ public class YapiMockProvider implements CodeVisionProvider<Unit> {
         List<Pair<TextRange, CodeVisionEntry>> lenses = new ArrayList<>();
         for (PsiMethod psiMethod : psiMethods) {
             TextRange range = InlayHintsUtils.INSTANCE.getTextRangeWithoutLeadingCommentsAndWhitespaces(psiMethod);
-            MyClickHandler handler = new MyClickHandler(psiMethod, true);
+            WindowsClickHandler handler = new WindowsClickHandler(psiMethod, true);
             CodeVisionEntry entry = new ClickableTextCodeVisionEntry(getName(), getId(), handler, null, getName(), getName(), List.of());
             lenses.add(new Pair<>(range, entry));
         }

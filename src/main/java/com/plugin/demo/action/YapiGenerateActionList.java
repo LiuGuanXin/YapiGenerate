@@ -24,7 +24,7 @@ public class YapiGenerateActionList extends AnAction {
     @Override
     public void actionPerformed(@NotNull AnActionEvent e) {
 
-        String result = ClassParse.getJsonResult(e, true, false);
+        String result = ClassParse.getJsonResult(e, "List", false);
         sendMessageToWindows(e.getProject(), result);
 
     }

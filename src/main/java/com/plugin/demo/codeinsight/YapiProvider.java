@@ -78,7 +78,7 @@ public class YapiProvider implements CodeVisionProvider<Unit> {
         List<Pair<TextRange, CodeVisionEntry>> lenses = new ArrayList<>();
         for (PsiMethod psiMethod : psiMethods) {
             TextRange range = InlayHintsUtils.INSTANCE.getTextRangeWithoutLeadingCommentsAndWhitespaces(psiMethod);
-            MyClickHandler handler = new MyClickHandler(psiMethod, false);
+            WindowsClickHandler handler = new WindowsClickHandler(psiMethod, false);
             CodeVisionEntry entry = new ClickableTextCodeVisionEntry(getName(), getId(), handler, null, getName(), getName(), List.of());
             lenses.add(new Pair<>(range, entry));
         }

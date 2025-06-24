@@ -22,7 +22,7 @@ public class YapiGenerateAction extends AnAction {
 
     @Override
     public void actionPerformed(@NotNull AnActionEvent e) {
-        String result = ClassParse.getJsonResult(e, false, false);
+        String result = ClassParse.getJsonResult(e, "Object", false);
         sendMessageToWindows(e.getProject(), result);
     }
 

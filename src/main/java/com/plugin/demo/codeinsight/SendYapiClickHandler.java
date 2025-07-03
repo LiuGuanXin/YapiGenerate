@@ -40,14 +40,22 @@ class SendYapiClickHandler implements Function2<MouseEvent, Editor, Unit> {
 		String methodDoc = ClassParse.getCommentText(psiMethod);
 		// 获取到请求路径
 		Map<String, String> map = ClassParse.getUrlPath(psiMethod);
+		String info = "确认是否生成（防止误触确认）";
+		if (mock) {
+			info = "点击确认后开始生成Mock数据，生成速度慢，请稍后，不要重复点击。";
+		}
+		boolean flag = new PromptDialogWrapper(info).showAndGet();
+		if (!flag) {
+			return null;
+		}
 		Map<String, String> resultMap = YapiInterface.createInterface(map.get("method"), methodDoc, map.get("path"));
 		if ("fail".equals(resultMap.get("status"))) {
 			if ("40022".equals(resultMap.get("errorCode"))) {
 				// 当前接口路径  需要获取 组名称、项目名称、分类名称
 				// 需要弹窗提示接口已存在是否覆盖
 				String interfacePath = YapiInterface.getInterfacePath(resultMap.get("id"));
-				boolean flag = new SampleDialogWrapper(interfacePath).showAndGet();
-				if (flag) {
+				boolean confirm = new SampleDialogWrapper(interfacePath).showAndGet();
+				if (confirm) {
 					// 更新数据
 					update(editor.getProject(), resultMap, map, methodDoc);
 				}
@@ -76,7 +84,6 @@ class SendYapiClickHandler implements Function2<MouseEvent, Editor, Unit> {
 			// 异步执行，不阻塞主线程
 			try {
 				// 更新数据
-				new PromptDialogWrapper("点击确认后生成Mock数据，生成速度慢，请稍后，不要重复点击。").showAndGet();
 				ApplicationManager.getApplication().executeOnPooledThread(() -> {
 					ApplicationManager.getApplication().runReadAction(() -> {
 						Map<String, Object> paramsMap = ClassParse.getParams(psiMethod, map, mock);

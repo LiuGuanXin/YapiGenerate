@@ -75,6 +75,12 @@ class WindowsClickHandler implements Function2<MouseEvent, Editor, Unit> {
         String body = (String) map.get("body");
         JSONArray params = (JSONArray) map.get("params");
         String result = "";
+        Map<String, String> pathMap = ClassParse.getUrlPath(psiMethod);
+        if (!pathMap.isEmpty()) {
+            result = result + "请求路径如下：\n" +
+                    "请求方式：" + pathMap.get("method") + "\n请求路径："
+                    + pathMap.get("path") + "\n";
+        }
         if (params != null) {
             String paramsString = JSON.toJSONString(params, SerializerFeature.PrettyFormat);
             result = result + "请求参数格式如下：\n" +

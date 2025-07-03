@@ -23,7 +23,7 @@ public final class CodeChronoSettings implements PersistentStateComponent<CodeCh
         public String zhiPuApiKey = "82da19100cd0433d827c52c16771a251.4qqMYcNBx5WyLn92";
         public String aLiApiKey = "82da19100cd0433d827c52c16771a251.4qqMYcNBx5WyLn92";
         public String aLiModelName = "qwen-max";
-        public String zhiPuModelName = "glm-4-plus";
+        public String zhiPuModelName = "glm-4-air-250414";
         public Integer type = 0;
 //        public String userName;
 //        public String password;

@@ -5,7 +5,7 @@ plugins {
 }
 
 group = "com.plugin"
-version = "1.1.5"
+version = "1.1.8"
 
 repositories {
     maven {

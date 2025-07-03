@@ -1,5 +1,6 @@
 package com.plugin.demo.business;
 
+import cn.hutool.core.util.ObjectUtil;
 import com.alibaba.fastjson.JSON;
 import com.alibaba.fastjson.JSONArray;
 import com.alibaba.fastjson.JSONException;
@@ -41,6 +42,7 @@ public class ClassParse {
     private static final String TYPE_INTEGER = "integer";
     private static final String TYPE_STRING = "string";
     private static final String TYPE_NUMBER = "number";
+    private static final String TYPE_BOOLEAN = "boolean";
 
 
     private static final String META_SCHEMA = """
@@ -294,9 +296,10 @@ public class ClassParse {
      */
     public static String typeTransform(String typeStr) {
         return switch (typeStr) {
-            case "int", "Integer", "Long", "long" -> TYPE_INTEGER;
-            case "String", "char", "Character" -> TYPE_STRING;
+            case "Void", "int", "Integer", "Long", "long" -> TYPE_INTEGER;
+            case "LocalDateTime", "String", "char", "Character" -> TYPE_STRING;
             case "float", "double", "Float", "Double" -> TYPE_NUMBER;
+            case "Boolean" -> TYPE_BOOLEAN;
             default -> typeStr;
         };
     }
@@ -816,7 +819,6 @@ public class ClassParse {
 		PsiClassType.ClassResolveResult classResolveResult = classType.resolveGenerics();
 		PsiSubstitutor substitutor = classResolveResult.getSubstitutor();
         String resultResult = "";
-
 		if (ClassParse.isCustomType(classType)) {
 			// 如果是对象类型
 			// 解析返回值
@@ -921,23 +923,38 @@ public class ClassParse {
 		return map;
 	}
 
-	/**
+    private static List<String> getAnnotationValues(PsiAnnotation annotation) {
+        PsiAnnotationMemberValue value = annotation.findDeclaredAttributeValue("value");
+        if (value == null) {
+            value = annotation.findDeclaredAttributeValue("path");
+        }
+        List<String> result = new ArrayList<>();
+        if (value != null) {
+            if (value instanceof PsiArrayInitializerMemberValue) {
+                for (PsiAnnotationMemberValue val : ((PsiArrayInitializerMemberValue) value).getInitializers()) {
+                    result.add(stripQuotes(val.getText()));
+                }
+            } else {
+                result.add(stripQuotes(value.getText()));
+            }
+        }
+        return result;
+    }
+
+	private static String stripQuotes(String text) {
+		if (text.startsWith("\"") && text.endsWith("\"")) {
+			return text.substring(1, text.length() - 1);
+		}
+		return text;
+	}
+
+
+    /**
 	 * 提取注解中的路径值（value 或 path）
 	 */
 	private static String getAnnotationValue(PsiAnnotation annotation) {
-		PsiAnnotationMemberValue value = annotation.findDeclaredAttributeValue("value");
-		if (value == null) {
-			value = annotation.findDeclaredAttributeValue("path");
-		}
-		if (value != null) {
-			String text = value.getText();
-			// 去掉双引号
-			if (text.startsWith("\"") && text.endsWith("\"")) {
-				return text.substring(1, text.length() - 1);
-			}
-			return text;
-		}
-		return "";
+		List<String> values = getAnnotationValues(annotation);
+		return values.isEmpty() ? "" : values.get(0);
 	}
 
 	/**

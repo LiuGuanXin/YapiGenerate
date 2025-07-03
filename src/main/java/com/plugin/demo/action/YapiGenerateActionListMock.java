@@ -2,7 +2,9 @@ package com.plugin.demo.action;
 
 import com.intellij.openapi.actionSystem.AnAction;
 import com.intellij.openapi.actionSystem.AnActionEvent;
+import com.intellij.openapi.application.ApplicationManager;
 import com.intellij.openapi.project.Project;
+import com.intellij.openapi.util.Computable;
 import com.intellij.openapi.wm.ToolWindow;
 import com.intellij.openapi.wm.ToolWindowManager;
 import com.plugin.demo.business.ClassParse;
@@ -23,10 +25,19 @@ public class YapiGenerateActionListMock extends AnAction {
 
     @Override
     public void actionPerformed(@NotNull AnActionEvent e) {
-
-        String result = ClassParse.getJsonResult(e, "List", true);
-        sendMessageToWindows(e.getProject(), result);
-
+        Project project = e.getProject();
+        sendMessageToWindows(project, "正在生成mock数据，请稍后.....");
+        try {
+            ApplicationManager.getApplication().executeOnPooledThread(() -> {
+                String result = ApplicationManager.getApplication().runReadAction(
+                        (Computable<String>) () ->
+                                ClassParse.getJsonResult(e, "List", true)
+                );
+                sendMessageToWindows(project, result);
+            });
+        } catch (Exception ex) {
+            sendMessageToWindows(project, "出现异常，请重试.....");
+        }
     }
 
     private void sendMessageToWindows(Project project, String message) {

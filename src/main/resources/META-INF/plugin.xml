@@ -2,7 +2,7 @@
 <idea-plugin>
     <!-- Unique identifier of the plugin. It should be FQN. It cannot be changed between the plugin versions. -->
     <id>YapiResultGenerate</id>
-    <version>1.1.5</version>
+    <version>1.1.8</version>
     <depends>com.intellij.modules.java</depends>
     <!-- Product and plugin compatibility requirements.
      Read more: https://plugins.jetbrains.com/docs/intellij/plugin-compatibility.html -->
@@ -18,77 +18,80 @@
     <!-- Description of the plugin displayed on the Plugin Page and IDE Plugin Manager.
          Simple HTML elements (text formatting, paragraphs, and lists) can be added inside of <![CDATA[ ]]> tag.
          Guidelines: https://plugins.jetbrains.com/docs/marketplace/plugin-overview-page.html#plugin-description -->
-    <description><![CDATA[
-    This plugin helps developers automatically generate Yapi-compatible JSON structures and documentation based on Java entity classes in IntelliJ IDEA.<br><br>
+	<description><![CDATA[
+	<p><b>🧩 Plugin Description / 插件描述：</b></p>
+	<p>This plugin helps developers automatically generate Yapi-compatible JSON structures and documentation based on Java entity classes in IntelliJ IDEA.</p>
+	<p>该插件用于在 IntelliJ IDEA 中根据 Java 实体类自动生成 Yapi 接口定义的 JSON 数据与文档，提升接口编写效率。</p>
 
-    该插件用于在 IntelliJ IDEA 中根据 Java 实体类自动生成 Yapi 接口定义的 JSON 数据与文档，提升接口编写效率。<br><br>
+	<p><b>📌 Usage Method 1 / 使用方式一：</b></p>
+	<p>In the Controller method area, four buttons will appear:<br>在 Controller 方法上方会出现四个按钮：</p>
+	<ul>
+	  <li><b>Document Generation / 文档生成：</b> Generates Yapi documentation for the current interface (shown in sidebar).</li>
+	  <li><b>Document + Mock Data / 文档生成（带 Mock 数据）：</b> Generates documentation with mock data.</li>
+	  <li><b>Create Interface on Yapi / 在 Yapi 上创建接口：</b> Configure info in <code>Settings → Tools → yapi_setting</code> and create interface.</li>
+	  <li><b>Create Interface with Mock Data / 在 Yapi 上创建接口（带 Mock 数据）：</b> Same as above, but includes mock data.</li>
+	</ul>
 
-    <em>
-    <b>Usage Method 1 / 使用方式一：</b><br>
-    在 Controller 方法上方会出现三个按钮：
-    <ul>
-    <li><b>文档生成</b>生成当前接口的 Yapi 文档（侧边栏窗口展示）。</li>
-    <li><b>文档生成 (同时生成mock数据)：</b>生成接口文档并附带 Mock 数据（侧边栏窗口展示）。</li>
-    <li><b>在Yapi上创建接口：</b>在Settings -> Tools -> yapi_setting配置Yapi信息后直接创建接口。</li>
-    <li><b>在Yapi上创建接口(mock数据)：</b>在Settings -> Tools -> yapi_setting配置Yapi信息后直接创建接口，同时生成mock数据。</li>
-    </ul>
+	<p><b>📌 Usage Method 2 / 使用方式二：</b></p>
+	<p>Right-click on a Java entity class and select "Yapi 返回结果生成" to generate the JSON structure.<br>在实体类中右键，选择 “Yapi 返回结果生成” 可自动生成 Yapi JSON 数据结构。</p>
 
-    <b>Usage Method 2 / 使用方式二：</b><br>
-    在实体类中右键，选择 “Yapi 返回结果生成” 菜单，可自动生成对应的 Yapi JSON 数据结构。<br><br>
+	<p><b>✨ Features / 功能特性：</b></p>
+	<ol>
+	  <li>Support for object response generation (with/without mock data).<br>支持生成对象返回结构，可选是否生成 Mock 数据。</li>
+	  <li>Support for list response generation (with/without mock data).<br>支持生成列表返回结构，可选是否生成 Mock 数据。</li>
+	  <li>Support for request body JSON generation (with/without mock data).<br>支持生成请求体 JSON，可选是否生成 Mock 数据。</li>
+	</ol>
 
-    <b>Features / 功能特性：</b>
-    <ol>
-    <li>支持生成对象返回结果，可选择是否包含 Mock 数据。</li>
-    <li>支持生成列表返回结果，可选择是否包含 Mock 数据。</li>
-    <li>支持生成请求体对象 JSON，可选择是否包含 Mock 数据。</li>
-    </ol>
-    <b>Note / 注意：</b><br>
-    <b>请求的路径参数和拼接参数备注信息由注释文档的@param 处读取，请完善注释文档，请使用/** */ 注释。</b><br>
-    <b>接受参数为对象类型，备注信息从对象属性的注解读取，请使用/** */ 注释。</b><br>
-    <b>对于Map类型的参数无法支持，静态情况下获取不到参数信息。</b><br>
-    <b>Mock 数据的生成依赖大语言模型（LLM）支持，请在设置中配置 API Key。</b><br>
-    <b>支持额外参数配置，有些设计会在拦截器中拦截部分参数，可添加路径匹配，为特定路径添加固定参数</b> <br>
-    <b>参数示例：</b><br>
-   <ol><li><b>```json
-                {
-                    "pathMatch" : "/api/**",
-                    "extraParams" : [
-                      {
-                        "name":"timestamp",
-                        "required":"1",
-                        "example":"123",
-                        "desc":"时间戳"
-                      },
-                      {
-                        "name":"nonce",
-                        "required":"1",
-                        "example":"123",
-                        "desc":"随机长整型"
-                      },
-                      {
-                        "name":"signature",
-                        "required":"1",
-                        "example":"77B27281779BD60CAE952FA1232368D2",
-                        "desc":"签名"
-                      },
-                      {
-                        "name":"accessToken",
-                        "required":"1",
-                        "example":"5d622aea8221e150fcede59823e84e10",
-                        "desc":"访问令牌"
-                      }
-                    ]
-                }
-                ```
-    </b></li></ol>
-    配置路径：<b>Settings -> Tools -> yapi_setting</b> <br>
-    </em>
-    ]]></description>
+	<p><b>⚠️ Note / 注意事项：</b></p>
+	<ul>
+	  <li><b>Path & query parameter descriptions</b> are extracted from <code>@param</code> JavaDoc. Use <code>/** */</code> comments.<br>路径与拼接参数说明读取自 <code>@param</code> 注释，请使用 <code>/** */</code> 注释。</li>
+	  <li><b>Object field descriptions</b> are extracted from their annotations.<br>对象参数的字段注释将用于文档生成。</li>
+	  <li><b>Map-type parameters</b> are not supported.<br>Map 类型参数不支持。</li>
+	  <li><b>Duplicate names</b> in group/project/category are not allowed on Yapi.<br>Yapi 不允许组名、项目名、分类名重名。</li>
+	  <li><b>Mock generation</b> relies on LLM, configure API Key in settings.<br>Mock 数据依赖大语言模型，需在设置中配置 API Key。</li>
+	  <li><b>Extra params</b> for specific paths (e.g., used in interceptors) are supported.<br>支持为指定路径添加额外参数。</li>
+	</ul>
+
+	<p><b>📄 Parameter Example / 参数配置示例：</b></p>
+	<pre><code>{
+	  "pathMatch": "/api/**",
+	  "extraParams": [
+		{
+		  "name": "timestamp",
+		  "required": "1",
+		  "example": "123",
+		  "desc": "时间戳"
+		},
+		{
+		  "name": "nonce",
+		  "required": "1",
+		  "example": "123",
+		  "desc": "随机长整型"
+		},
+		{
+		  "name": "signature",
+		  "required": "1",
+		  "example": "77B27281779BD60CAE952FA1232368D2",
+		  "desc": "签名"
+		},
+		{
+		  "name": "accessToken",
+		  "required": "1",
+		  "example": "5d622aea8221e150fcede59823e84e10",
+		  "desc": "访问令牌"
+		}
+	  ]
+	}
+	</code></pre>
+
+	<p><b>🔧 Settings Path / 配置路径：</b> Settings → Tools → yapi_setting</p>
+	]]></description>
+
 
     <change-notes><![CDATA[
         <ul>
-            <li><b>请求参数解析优化</b></li>
-            <li><b>修复部分问题</b></li>
+            <li><b>生成Yapi接口按钮添加确认弹窗，防止误点击</b></li>
+            <li><b>修复请求参数多路径读取失败问题，默认取第一个路径</b></li>
         </ul>
     ]]></change-notes>
 
